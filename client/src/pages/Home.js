@@ -1,5 +1,6 @@
 import React from 'react';
-import { Container, Row, Col, Card, ListGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, ListGroup, Button } from 'react-bootstrap';
+import MapView from '../components/MapView';
 
 const mockCurse = [
   { id: 1, tip: 'Autocar', nr: 'B70CAR', ruta: 'București - Ploiești' },
@@ -30,23 +31,24 @@ export default function Home() {
           <h4 className="text-center">User Admin</h4>
           <Card className="mt-3">
             <Card.Body>
-              <div className="mb-4">
-                <Card.Title>Adaugă o nouă cursă</Card.Title>
-                <Card.Text className="text-center text-muted">SAU</Card.Text>
-                <Card.Text>Editează o cursă existentă</Card.Text>
+              {/* Cursă */}
+              <div className="mb-4 d-grid gap-2">
+                <Button variant="primary">Adaugă o nouă cursă</Button>
+                <Button variant="outline-secondary">Editează o cursă existentă</Button>
               </div>
 
               <hr />
 
-              <div className="mb-4">
-                <Card.Title>Adaugă un nou autoturism</Card.Title>
-                <Card.Text className="text-center text-muted">SAU</Card.Text>
-                <Card.Text>Editează un autoturism</Card.Text>
+              {/* Autoturism */}
+              <div className="mb-4 d-grid gap-2">
+                <Button variant="success">Adaugă un nou autoturism</Button>
+                <Button variant="outline-secondary">Editează un autoturism</Button>
               </div>
 
-              <div className="border p-3 text-center mt-4 bg-light">
-                Hartă cu cursele auto
+              <div className="mt-4">
+                <MapView />
               </div>
+
             </Card.Body>
           </Card>
         </Col>
