@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
 
 function App() {
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    fetch("http://localhost:5000/api")
-      .then(res => res.json())
-      .then(data => setMessage(data.message));
-  }, []);
-
-  return <h1>{message || "Se încarcă..."}</h1>;
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+      </Routes>
+    </Router>
+  );
 }
 
 export default App;
