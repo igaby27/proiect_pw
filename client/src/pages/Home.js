@@ -3,7 +3,7 @@ import { Container, Row, Col, Card, ListGroup } from 'react-bootstrap';
 
 const mockCurse = [
   { id: 1, tip: 'Autocar', nr: 'B70CAR', ruta: 'București - Ploiești' },
-  { id: 2, tip: 'Microbuz', nr: 'CJ99XYZ', ruta: 'Cluj - Oradea' },
+  { id: 2, tip: 'Microbuz', nr: 'TL22PGA', ruta: 'Cluj - Oradea' },
 ];
 
 export default function Home() {
