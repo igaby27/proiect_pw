@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Container, Row, Col, Card, ListGroup, Button } from 'react-bootstrap';
 import MapView from '../components/MapView';
 
-const mockCurse = [
-  { id: 1, tip: 'Autocar', nr: 'B70CAR', ruta: 'București - Ploiești' },
-  { id: 2, tip: 'Microbuz', nr: 'TL22PGA', ruta: 'Cluj - Oradea' },
-];
-
 export default function Home() {
+  const [curse, setCurse] = useState([]);
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/clienti')
+      .then((res) => res.json())
+      .then((data) => setCurse(data))
+      .catch((err) => console.error('Eroare la fetch:', err));
+  }, []);
+
   return (
     <Container className="mt-4">
       <h1 className="mb-4">Home</h1>
@@ -16,7 +20,7 @@ export default function Home() {
         <Col md={6}>
           <h4>Curse auto - listă</h4>
           <ListGroup className="mt-3">
-            {mockCurse.map((cursa) => (
+            {curse.map((cursa) => (
               <ListGroup.Item key={cursa.id} className="d-flex justify-content-between">
                 <span>{cursa.tip}</span>
                 <span>{cursa.nr}</span>
@@ -45,10 +49,10 @@ export default function Home() {
                 <Button variant="outline-secondary">Editează un autoturism</Button>
               </div>
 
+              {/* Hartă păstrată */}
               <div className="mt-4">
                 <MapView />
               </div>
-
             </Card.Body>
           </Card>
         </Col>

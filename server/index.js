@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const pool = require('./db');
 
 const app = express();
 const PORT = 5000;
@@ -13,4 +14,14 @@ app.get('/api', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Serverul rulează pe http://localhost:${PORT}`);
+});
+
+app.get('/api/curse', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM clienti;');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Eroare la interogare');
+  }
 });
