@@ -1,88 +1,109 @@
-import React, { useState } from "react";
-import { Container, Row, Col, Form, Button, Card } from "react-bootstrap";
+import React, { useState, useEffect } from "react";
+import { Container, Row, Col, Form, Button, Card, Alert } from "react-bootstrap";
+import axios from "axios";
 
 export default function RezervareCursaPage() {
-  const [selectedCursa, setSelectedCursa] = useState("");
+  const [curseDisponibile, setCurseDisponibile] = useState([]);
+  const [rutaSelectata, setRutaSelectata] = useState("");
+  const [curse, setCurse] = useState([]);
+  const [oraSelectata, setOraSelectata] = useState("");
   const [numarLocuri, setNumarLocuri] = useState(1);
+  const [dataSelectata, setDataSelectata] = useState("");
+  const [success, setSuccess] = useState(false);
 
-  const curse = [
-    {
-      id: 1,
-      autocar: "Autocar 1",
-      inmatriculare: "B70CAR",
-      ruta: "București - Ploiești",
-      oraPlecare: "10:00",
-      oraSosire: "11:00",
-    },
-    {
-      id: 2,
-      autocar: "Autocar 2",
-      inmatriculare: "CJ22BUS",
-      ruta: "Cluj - Oradea",
-      oraPlecare: "13:00",
-      oraSosire: "15:30",
-    },
-  ];
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/autocare-disponibile")
+      .then((res) => setCurseDisponibile(res.data))
+      .catch((err) => console.error("Eroare la încărcarea autocarelor:", err));
+  }, []);
 
-    const handleSubmit = (e) => {
+  useEffect(() => {
+    if (rutaSelectata) {
+      axios.get(`http://localhost:5000/api/ora-plecare-transport/${rutaSelectata}`)
+        .then((res) => setCurse(res.data))
+        .catch((err) => console.error("Eroare la obținerea orelor:", err));
+    }
+  }, [rutaSelectata]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    const user = JSON.parse(localStorage.getItem("currentUser"));
 
-    // TODO: trimite datele la backend pentru rezervare
+    if (!user || !user.email) {
+      alert("Utilizatorul nu este autentificat.");
+      return;
+    }
 
-    alert("Rezervarea a fost înregistrată cu succes!");
+    if (!dataSelectata) {
+      alert("Te rugăm să selectezi o dată pentru rezervare.");
+      return;
+    }
 
-    // Redirecționare după confirmare
-    setTimeout(() => {
+    try {
+      await axios.post("http://localhost:5000/api/rezerva", {
+        email: user.email,
+        idtransport: parseInt(rutaSelectata),
+        idora: parseInt(oraSelectata),
+        numar_locuri: parseInt(numarLocuri),
+        data: dataSelectata,
+      });
+
+      setSuccess(true);
+      setTimeout(() => {
         window.location.href = "/home-user";
-        }, 500); // 0.5 secunde întârziere
-    };
-
-  const cursaSelectata = curse.find((c) => c.id === parseInt(selectedCursa));
+      }, 1000); // redirecționare după 1 sec.
+    } catch (err) {
+      console.error("Eroare la rezervare:", err);
+      alert("A apărut o eroare la salvarea rezervării.");
+    }
+  };
 
   return (
-    <Container
-      fluid
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(to bottom, #007bff, #000)",
-        padding: "2rem",
-        color: "white",
-      }}
-    >
+    <Container fluid style={{ minHeight: "100vh", background: "linear-gradient(to bottom, #007bff, #000)", padding: "2rem", color: "white" }}>
       <Row className="justify-content-center mb-4">
         <Col xs={12} md={8}>
           <h1 className="text-center mb-4" style={{ fontSize: "2.5rem" }}>Rezervare Cursă</h1>
+
           <Card className="p-4 bg-transparent shadow" style={{ color: "white" }}>
+            {success && <Alert variant="success">Rezervare efectuată cu succes! Redirecționare...</Alert>}
+
             <Form onSubmit={handleSubmit}>
               <Form.Group className="mb-3">
-                <Form.Label style={{ fontSize: "1.2rem" }}>Selectează o cursă</Form.Label>
-                <Form.Select
-                  value={selectedCursa}
-                  onChange={(e) => setSelectedCursa(e.target.value)}
-                  required
-                >
-                  <option value="">Alege o cursă</option>
-                  {curse.map((cursa) => (
-                    <option key={cursa.id} value={cursa.id}>
-                      {cursa.ruta} - {cursa.oraPlecare}
+                <Form.Label>Rută</Form.Label>
+                <Form.Select value={rutaSelectata} onChange={(e) => setRutaSelectata(e.target.value)} required>
+                  <option value="">Alege ruta</option>
+                  {curseDisponibile.map((cursa) => (
+                    <option key={cursa.idtransport} value={cursa.idtransport}>
+                      {cursa.plecare_oras} - {cursa.destinatie_oras}
                     </option>
                   ))}
                 </Form.Select>
               </Form.Group>
 
-              {cursaSelectata && (
-                <div className="mb-3" style={{ fontSize: "1.1rem" }}>
-                  <strong>Detalii cursă:</strong><br />
-                  Autocar: {cursaSelectata.autocar}<br />
-                  Nr. Înmatriculare: {cursaSelectata.inmatriculare}<br />
-                  Rută: {cursaSelectata.ruta}<br />
-                  Ora plecare: {cursaSelectata.oraPlecare}<br />
-                  Ora sosire: {cursaSelectata.oraSosire}
-                </div>
-              )}
+              <Form.Group className="mb-3">
+                <Form.Label>Ora plecare</Form.Label>
+                <Form.Select value={oraSelectata} onChange={(e) => setOraSelectata(e.target.value)} required>
+                  <option value="">Alege ora</option>
+                  {curse.map((c) => (
+                    <option key={c.idora} value={c.idora}>
+                      {c.ora} - {c.numar_inmatriculare}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label style={{ fontSize: "1.2rem" }}>Număr locuri</Form.Label>
+                <Form.Label>Data rezervării</Form.Label>
+                <Form.Control
+                  type="date"
+                  value={dataSelectata}
+                  onChange={(e) => setDataSelectata(e.target.value)}
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Număr locuri</Form.Label>
                 <Form.Control
                   type="number"
                   min="1"

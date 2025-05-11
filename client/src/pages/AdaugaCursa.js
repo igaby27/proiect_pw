@@ -4,33 +4,41 @@ import { Container, Row, Col, Form, Button } from "react-bootstrap";
 export default function AdaugaCursa() {
   const [autocareDisponibile, setAutocareDisponibile] = useState([]);
   const [selectedAutocar, setSelectedAutocar] = useState("");
-  const [plecare, setPlecare] = useState("");
-  const [destinatie, setDestinatie] = useState("");
   const [oraPlecare, setOraPlecare] = useState("");
 
   useEffect(() => {
-    // TODO: Aici se face request către backend pentru a obține autocarele care NU au deja o cursă asociată
-    // Exemplu:
-    // fetch("/api/autocare-disponibile").then(res => res.json()).then(data => setAutocareDisponibile(data));
-    setAutocareDisponibile([
-      { id: 1, nrInmatriculare: "B70CAR" },
-      { id: 2, nrInmatriculare: "CJ20BUS" },
-    ]);
+    fetch("http://localhost:5000/api/autocare-disponibile")
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Autocare disponibile:", data);
+        setAutocareDisponibile(data);
+      })
+      .catch((err) => console.error("Eroare la încărcarea autocarelor:", err));
   }, []);
+  
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // TODO: Aici se trimite către backend datele despre noua cursă
-    // Exemplu:
-    // fetch("/api/adauga-cursa", {
-    //   method: "POST",
-    //   body: JSON.stringify({ autocarId: selectedAutocar, plecare, destinatie, oraPlecare }),
-    //   headers: { "Content-Type": "application/json" }
-    // });
-
-    alert("Cursa a fost adăugată cu succes!");
-    window.location.href = "/home-companie";
+    // Trimite datele către backend pentru a adăuga ora plecării
+    fetch("http://localhost:5000/api/adauga-cursa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        autocarId: selectedAutocar,
+        oraPlecare,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          alert("Cursa a fost adăugată cu succes!");
+          window.location.href = "/home-companie";
+        } else {
+          alert("Eroare la salvarea cursei.");
+        }
+      })
+      .catch(() => alert("Serverul nu răspunde."));
   };
 
   return (
@@ -64,34 +72,14 @@ export default function AdaugaCursa() {
           >
             <option value="">Selectează un autocar</option>
             {autocareDisponibile.map((autocar) => (
-              <option key={autocar.id} value={autocar.id}>
-                {autocar.nrInmatriculare}
+              <option key={autocar.idtransport} value={autocar.idtransport}>
+                {autocar.numar_inmatriculare} – {autocar.plecare_oras} ➔ {autocar.destinatie_oras}
               </option>
             ))}
           </Form.Select>
         </Form.Group>
 
         <Form.Group className="mb-3">
-          <Form.Label>Oraș de plecare</Form.Label>
-          <Form.Control
-            type="text"
-            value={plecare}
-            onChange={(e) => setPlecare(e.target.value)}
-            required
-          />
-        </Form.Group>
-
-        <Form.Group className="mb-3">
-          <Form.Label>Destinație</Form.Label>
-          <Form.Control
-            type="text"
-            value={destinatie}
-            onChange={(e) => setDestinatie(e.target.value)}
-            required
-          />
-        </Form.Group>
-
-        <Form.Group className="mb-4">
           <Form.Label>Ora plecării</Form.Label>
           <Form.Control
             type="time"

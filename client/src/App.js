@@ -12,6 +12,8 @@ import AddAutocarPage from './pages/AdaugaAutocar';
 import StergeAutocar from './pages/StergeAutocar';
 import AdaugaCursa from './pages/AdaugaCursa';
 import StergeCursa from './pages/StergeCursa';
+import AdaugaLocatie from './pages/AdaugaLocatie';
+import StergeLocatie from './pages/StergeLocatie';
 
 function App() {
   return (
@@ -30,6 +32,8 @@ function App() {
         <Route path="/sterge-autocar" element={<StergeAutocar />} />
         <Route path="/adauga-cursa" element={<AdaugaCursa />} />
         <Route path="/sterge-cursa" element={<StergeCursa />} />
+        <Route path="/adauga-locatie" element={<AdaugaLocatie />} />
+        <Route path="/sterge-locatie" element={<StergeLocatie />} />
       </Routes>
     </Router>
   );

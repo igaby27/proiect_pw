@@ -6,38 +6,51 @@ export default function AnuleazaCursaPage() {
   const [selectedId, setSelectedId] = useState("");
 
   useEffect(() => {
-    // TODO: Înlocuiește cu apel backend pentru a obține rezervările utilizatorului
-    const rezervariSimulate = [
-      {
-        id: "1",
-        autocar: "Autocar 1",
-        numarInmatriculare: "B70CAR",
-        ruta: "București - Ploiești",
-        locuri: 2,
-      },
-      {
-        id: "2",
-        autocar: "Autocar 2",
-        numarInmatriculare: "AG99BUS",
-        ruta: "Pitești - Sibiu",
-        locuri: 1,
-      },
-    ];
-    setRezervari(rezervariSimulate);
+    const user = JSON.parse(localStorage.getItem("currentUser"));
+
+    if (user?.username) {
+      // Obține ID-ul userului
+      fetch(`http://localhost:5000/api/users/${user.username}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.id) {
+            // Apelează rezervările
+            fetch(`http://localhost:5000/api/rezervarile-mele?iduser=${data.id}`)
+              .then(res => res.json())
+              .then(rez => {
+                setRezervari(Array.isArray(rez) ? rez : []);
+              })
+              .catch(err => console.error("Eroare rezervări:", err));
+          }
+        })
+        .catch(err => console.error("Eroare la user:", err));
+    }
   }, []);
 
-    const handleSubmit = (e) => {
-     e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    // TODO: trimite cererea de anulare la backend
+    try {
+      const res = await fetch(`http://localhost:5000/api/sterge-rezervare/${selectedId}`, {
+        method: "DELETE",
+      });
 
-    alert("Rezervarea a fost anulată cu succes!");
+      const data = await res.json();
 
-    // Redirecționare după confirmare
-  setTimeout(() => {
-    window.location.href = "/home-user";
-  }, 500); // 0.5 secunde întârziere
-};
+      if (data.success) {
+        alert("Rezervarea a fost anulată cu succes!");
+        setTimeout(() => {
+          window.location.href = "/home-user";
+        }, 500);
+      } else {
+        alert("Eroare: " + data.message);
+      }
+    } catch (err) {
+      console.error("Eroare la ștergere:", err);
+      alert("Eroare la trimiterea cererii de anulare.");
+    }
+  };
+
   return (
     <Container
       fluid
@@ -58,11 +71,12 @@ export default function AnuleazaCursaPage() {
             <Form.Select
               value={selectedId}
               onChange={(e) => setSelectedId(e.target.value)}
+              required
             >
               <option value="">Selectează o rezervare</option>
               {rezervari.map((rez) => (
-                <option key={rez.id} value={rez.id}>
-                  {rez.ruta} | {rez.autocar} | {rez.numarInmatriculare} | {rez.locuri} locuri
+                <option key={rez.idrezervare} value={rez.idrezervare}>
+                  {rez.plecare} → {rez.destinatie} | {rez.numar_inmatriculare} | {rez.ora_rezervare} | {rez.numar_locuri} locuri
                 </option>
               ))}
             </Form.Select>

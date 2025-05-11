@@ -42,6 +42,15 @@ export default function HomeCompanie() {
     // Aici integrezi logica de backend pentru ștergerea unei curse
     window.location.href = "/sterge-cursa";
   };
+  const handleLocatie = () => {
+    window.location.href = "/adauga-locatie";
+    };
+    
+  const handleStergeLocatie = () => {
+    window.location.href = "/sterge-locatie";
+    };
+    
+  
 
   if (loading) return <Loader />; // Afișăm loader-ul dacă suntem în stare de încărcare
   return (
@@ -63,6 +72,35 @@ export default function HomeCompanie() {
           <a href="/user-profile" style={{ color: "white", textDecoration: "underline" }}>
             {username && `Logged in as: ${username}`}
           </a>
+        </Col>
+      </Row>
+      
+      
+      
+      {/* Secțiunea de locații */}
+      <Row className="mb-5 px-3">
+        <Col>
+          <h2 className="mb-3">Gestionare Locații</h2>
+          <Row>
+            <Col xs={12} md={6} className="mb-3">
+              <Button
+                variant="success"
+                className="w-100 py-3 fs-5"
+                onClick={handleLocatie}
+              >
+                Adaugă / Modifică Locație
+              </Button>
+            </Col>
+            <Col xs={12} md={6}>
+              <Button
+                variant="danger"
+                className="w-100 py-3 fs-5"
+                onClick={handleStergeLocatie}
+              >
+                Șterge Locație
+              </Button>
+            </Col>
+          </Row>
         </Col>
       </Row>
 

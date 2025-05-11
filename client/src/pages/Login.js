@@ -2,50 +2,44 @@ import React, { useState } from "react";
 import { Container, Form, Button, Alert } from "react-bootstrap";
 
 export default function LoginPage() {
-  const [credentials, setCredentials] = useState({ email: "", password: "" });
+  const [credentials, setCredentials] = useState({ email: "", parola: "" });
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
-    setCredentials({ ...credentials, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setCredentials((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      // === INTEGRARE BACKEND ===
-      // Înlocuiește acest simulacru cu un apel real către backendul tău
-      // Exemplu: const res = await fetch("/api/login", { method: "POST", body: JSON.stringify(credentials) });
-      // const data = await res.json();
+      const response = await fetch("http://localhost:5000/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
 
-      const mockResponse = {
-        success: true,
-        user: {
-          username: "Andrei",
-          email: credentials.email,
-          role: credentials.email.includes("admin") ? "admin" : "user", // simulare rol
-          phone: "0712345678",
-        },
-      };
+      const data = await response.json();
 
-      if (!mockResponse.success) {
+      if (!data.success) {
         throw new Error("Date incorecte");
       }
 
-      // Salvăm utilizatorul logat în localStorage
-      localStorage.setItem("currentUser", JSON.stringify(mockResponse.user));
+      localStorage.setItem("currentUser", JSON.stringify(data.user));
 
-      // Redirecționare pe baza rolului
-      if (mockResponse.user.role === "admin") {
+      if (data.user.rol === "companie") {
         window.location.href = "/home-companie";
       } else {
         window.location.href = "/home-user";
       }
-
-      // ============================
     } catch (err) {
       setError("Email sau parolă incorecte.");
     }
+  };
+
+  const handleRegisterRedirect = () => {
+    window.location.href = "/register";
   };
 
   return (
@@ -76,8 +70,8 @@ export default function LoginPage() {
           <Form.Label>Parolă</Form.Label>
           <Form.Control
             type="password"
-            name="password"
-            value={credentials.password}
+            name="parola"
+            value={credentials.parola}
             onChange={handleChange}
             required
           />
@@ -85,6 +79,14 @@ export default function LoginPage() {
 
         <Button variant="primary" type="submit" className="w-100 mt-3">
           Autentifică-te
+        </Button>
+
+        <Button
+          variant="outline-light"
+          onClick={handleRegisterRedirect}
+          className="w-100 mt-3"
+        >
+          Creează un cont nou
         </Button>
       </Form>
     </Container>

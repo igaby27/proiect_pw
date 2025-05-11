@@ -6,12 +6,12 @@ export default function CreateAccount() {
   const [formData, setFormData] = useState({
     username: "",
     email: "",
-    password: "",
-    phone: "",
-    role: "user",
-    company: "",
-    city: "",
-    vehicles: "",
+    parola: "",           
+    telefon: "",          
+    rol: "user",          
+    nume_companie: "",
+    oras: "",
+    masini: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -27,13 +27,13 @@ export default function CreateAccount() {
     const newErrors = {};
     if (!formData.username) newErrors.username = "Username este obligatoriu";
     if (!formData.email) newErrors.email = "Email-ul este obligatoriu";
-    if (!formData.password) newErrors.password = "Parola este obligatorie";
-    if (!formData.phone) newErrors.phone = "Numărul de telefon este obligatoriu";
+    if (!formData.parola) newErrors.parola = "Parola este obligatorie";
+    if (!formData.telefon) newErrors.telefon = "Numărul de telefon este obligatoriu";
 
-    if (formData.role === "admin") {
-      if (!formData.company) newErrors.company = "Numele companiei este obligatoriu";
-      if (!formData.city) newErrors.city = "Orașul este obligatoriu";
-      if (!formData.vehicles) newErrors.vehicles = "Numărul de vehicule este obligatoriu";
+    if (formData.rol === "admin") {
+      if (!formData.companie) newErrors.companie = "Numele companiei este obligatoriu";
+      if (!formData.oras) newErrors.oras = "Orașul este obligatoriu";
+      if (!formData.masini) newErrors.masini = "Numărul de vehicule este obligatoriu";
     }
 
     setErrors(newErrors);
@@ -43,6 +43,29 @@ export default function CreateAccount() {
       // fetch('/api/register', { method: 'POST', body: JSON.stringify(formData) })
       //   .then(...)
       // =========================
+
+
+      fetch("http://localhost:5000/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            localStorage.setItem("currentUser", JSON.stringify({ username: formData.username }));
+            window.location.href = "/home-user";
+          } else {
+            alert("Eroare la înregistrare.");
+          }
+        })
+        .catch((err) => {
+          console.error("Eroare:", err);
+          alert("Eroare la conectarea cu serverul.");
+        });
+      
 
       localStorage.setItem("currentUser", JSON.stringify({ username: formData.username }));
       window.location.href = "/home-user";
@@ -89,24 +112,24 @@ export default function CreateAccount() {
           <Form.Label>Parolă</Form.Label>
           <Form.Control
             type="password"
-            name="password"
-            value={formData.password}
+            name="parola"
+            value={formData.parola}
             onChange={handleChange}
-            isInvalid={!!errors.password}
+            isInvalid={!!errors.parola}
           />
-          <Form.Control.Feedback type="invalid">{errors.password}</Form.Control.Feedback>
+          <Form.Control.Feedback type="invalid">{errors.parola}</Form.Control.Feedback>
         </Form.Group>
 
         <Form.Group className="mb-3">
           <Form.Label>Număr de telefon</Form.Label>
           <Form.Control
             type="text"
-            name="phone"
-            value={formData.phone}
+            name="telefon"
+            value={formData.telefon}
             onChange={handleChange}
-            isInvalid={!!errors.phone}
+            isInvalid={!!errors.telefon}
           />
-          <Form.Control.Feedback type="invalid">{errors.phone}</Form.Control.Feedback>
+          <Form.Control.Feedback type="invalid">{errors.telefon}</Form.Control.Feedback>
         </Form.Group>
 
         <Form.Group className="mb-3">
@@ -115,60 +138,60 @@ export default function CreateAccount() {
             <Form.Check
               inline
               label="Utilizator"
-              name="role"
+              name="rol"
               type="radio"
               value="user"
-              checked={formData.role === "user"}
+              checked={formData.rol === "user"}
               onChange={handleChange}
             />
             <Form.Check
               inline
               label="Companie"
-              name="role"
+              name="rol"
               type="radio"
-              value="Companie"
-              checked={formData.role === "Companie"}
+              value="companie"
+              checked={formData.rol === "companie"}
               onChange={handleChange}
             />
           </div>
         </Form.Group>
 
-        {formData.role === "Companie" && (
+        {formData.rol === "companie" && (
           <>
             <Form.Group className="mb-3">
               <Form.Label>Nume companie</Form.Label>
               <Form.Control
                 type="text"
-                name="company"
-                value={formData.company}
+                name="companie"
+                value={formData.companie}
                 onChange={handleChange}
-                isInvalid={!!errors.company}
+                isInvalid={!!errors.companie}
               />
-              <Form.Control.Feedback type="invalid">{errors.company}</Form.Control.Feedback>
+              <Form.Control.Feedback type="invalid">{errors.companie}</Form.Control.Feedback>
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label>Oraș</Form.Label>
               <Form.Control
                 type="text"
-                name="city"
-                value={formData.city}
+                name="oras"
+                value={formData.oras}
                 onChange={handleChange}
-                isInvalid={!!errors.city}
+                isInvalid={!!errors.oras}
               />
-              <Form.Control.Feedback type="invalid">{errors.city}</Form.Control.Feedback>
+              <Form.Control.Feedback type="invalid">{errors.oras}</Form.Control.Feedback>
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label>Număr inițial de autovehicule</Form.Label>
               <Form.Control
                 type="number"
-                name="vehicles"
-                value={formData.vehicles}
+                name="masini"
+                value={formData.masini}
                 onChange={handleChange}
-                isInvalid={!!errors.vehicles}
+                isInvalid={!!errors.masini}
               />
-              <Form.Control.Feedback type="invalid">{errors.vehicles}</Form.Control.Feedback>
+              <Form.Control.Feedback type="invalid">{errors.masini}</Form.Control.Feedback>
             </Form.Group>
           </>
         )}

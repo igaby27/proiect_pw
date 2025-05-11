@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Button, Card } from "react-bootstrap";
-import Loader from "./Loader"; // Importăm loader-ul
+import Loader from "./Loader";
 
 export default function UserProfile() {
   const [username, setUsername] = useState("");
@@ -15,30 +15,38 @@ export default function UserProfile() {
     if (user && user.username) {
       setUsername(user.username);
 
-      // === INTEGRARE BACKEND ===
-      // Aici faci request către backend pentru datele utilizatorului
-      fetch(`/api/users/${user.username}`)
+      fetch(`http://localhost:5000/api/users/${user.username}`)
         .then((res) => res.json())
-        .then((data) => {
-          setEmail(data.email);
-          setTelefon(data.phone);
-          setCurseleActive(data.curseleActive || []);
-          setCurseleFinalizate(data.curseleFinalizate || []);
+        .then((userData) => {
+          setEmail(userData.email);
+          setTelefon(userData.telefon);
+
+          // Căutăm rezervările userului
+          if (userData.id) {
+            fetch(`http://localhost:5000/api/rezervarile-mele?iduser=${userData.id}`)
+              .then((res) => res.json())
+              .then((rez) => {
+                if (Array.isArray(rez)) {
+                  // Poți adăuga un filtru pentru "finalizate" după dată
+                  setCurseleActive(rez);
+                }
+              })
+              .catch((err) => console.error("Eroare la rezervări:", err));
+          }
         })
-        .catch((err) => console.error("Eroare la preluarea profilului:", err));
-      // ==========================
+        .catch((err) => console.error("Eroare la preluarea utilizatorului:", err));
     }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("currentUser");
     window.location.href = "/";
   };
-
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(timer);
-  }, []);
 
   if (loading) return <Loader />;
 
@@ -70,10 +78,12 @@ export default function UserProfile() {
           {curseleActive.map((cursa, index) => (
             <Card key={index} bg="light" text="dark" className="m-2 p-2" style={{ width: "20rem" }}>
               <Card.Body>
-                <Card.Title>{cursa.ruta}</Card.Title>
+                <Card.Title>{cursa.plecare} → {cursa.destinatie}</Card.Title>
                 <Card.Text>
-                  Plecare: {cursa.oraPlecare} <br />
-                  Locuri rezervate: {cursa.locuri}
+                  Data: {new Date(cursa.data_rezervare).toLocaleDateString()}<br />
+                  Ora: {cursa.ora_rezervare}<br />
+                  Autocar: {cursa.numar_inmatriculare}<br />
+                  Locuri: {cursa.numar_locuri}
                 </Card.Text>
               </Card.Body>
             </Card>
@@ -83,28 +93,16 @@ export default function UserProfile() {
         <p>Nu ai curse rezervate în acest moment.</p>
       )}
 
-      <h4 className="mt-5">Curse finalizate:</h4>
-      {curseleFinalizate.length > 0 ? (
-        <Row className="w-100 justify-content-center">
-          {curseleFinalizate.map((cursa, index) => (
-            <Card key={index} bg="secondary" text="white" className="m-2 p-2" style={{ width: "20rem" }}>
-              <Card.Body>
-                <Card.Title>{cursa.ruta}</Card.Title>
-                <Card.Text>
-                  Plecare: {cursa.oraPlecare} <br />
-                  Locuri rezervate: {cursa.locuri}
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          ))}
-        </Row>
-      ) : (
-        <p>Nu ai curse finalizate.</p>
-      )}
+      
 
-      <Button variant="danger" size="lg" className="mt-4" onClick={handleLogout}>
-        Delogare
-      </Button>
+      <div className="d-flex gap-3 mt-4">
+        <Button variant="success" size="lg" onClick={() => window.history.back()}>
+          Înapoi
+        </Button>
+        <Button variant="danger" size="lg" onClick={handleLogout}>
+          Delogare
+        </Button>
+      </div>
     </Container>
   );
 }
