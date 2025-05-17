@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Button, Card } from "react-bootstrap";
 import Loader from "./Loader";
-import CursaHarta from "../components/MockupCursa";
+import CursaHarta from "/MockupCursa";
 import "leaflet/dist/leaflet.css";
 import { useNavigate } from "react-router-dom";
 import { get } from "../api/api";
