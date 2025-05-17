@@ -1,30 +1,17 @@
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Polyline, Marker, Popup } from "react-leaflet";
 import axios from "axios";
-
-// Presupunem că backendul returnează o listă de curse în desfășurare cu punctele de start/destinație
-// Exemplu de răspuns de la backend:
-// [
-//   {
-//     id: 1,
-//     orasStart: "București",
-//     coordStart: [26.1025, 44.4268],
-//     orasDestinatie: "Ploiești",
-//     coordDest: [26.0327, 44.9466]
-//   },
-//   ...
-// ]
+import { get } from "../api/api"; // ✅ folosește wrapperul din api.js
 
 export default function CursaHartaReal() {
-  const [curse, setCurse] = useState([]); // Lista de curse în desfășurare
-  const [trasee, setTrasee] = useState([]); // Lista de rute generate
+  const [curse, setCurse] = useState([]);
+  const [trasee, setTrasee] = useState([]);
 
   useEffect(() => {
     const fetchCurse = async () => {
       try {
-        // TODO: Înlocuiește URL-ul cu ruta ta reală de backend pentru curse în desfășurare
-        const response = await axios.get("http://localhost:5000/api/curse-in-desfasurare");
-        setCurse(response.data); // Setăm lista de curse din backend
+        const data = await get("/api/curse-in-desfasurare");
+        setCurse(data);
       } catch (error) {
         console.error("Eroare la obținerea curselor:", error);
       }
@@ -52,7 +39,8 @@ export default function CursaHartaReal() {
             }
           );
 
-          const coords = response.data.features[0].geometry.coordinates.map((coord) => [coord[1], coord[0]]);
+          const coords = response.data.features[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+
           return {
             id: cursa.id,
             traseu: coords,
@@ -62,14 +50,13 @@ export default function CursaHartaReal() {
             orasDestinatie: cursa.orasDestinatie,
           };
         } catch (error) {
-          console.error("Eroare la generarea traseului pentru cursa ID " + cursa.id, error);
+          console.error(`Eroare traseu pentru cursa ID ${cursa.id}:`, error);
           return null;
         }
       });
 
       const rezultate = await Promise.all(traseePromises);
-      const traseeValide = rezultate.filter((rez) => rez !== null);
-      setTrasee(traseeValide);
+      setTrasee(rezultate.filter(Boolean));
     };
 
     if (curse.length > 0) {

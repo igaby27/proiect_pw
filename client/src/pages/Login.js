@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Container, Form, Button, Alert } from "react-bootstrap";
+import { post } from "../api/api"; // ✅ importă metoda POST
 
 export default function LoginPage() {
   const [credentials, setCredentials] = useState({ email: "", parola: "" });
@@ -14,17 +15,9 @@ export default function LoginPage() {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:5000/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
-      });
+      const data = await post("/api/login", credentials); // ✅ folosește post() în loc de fetch
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error("Date incorecte");
-      }
+      if (!data.success) throw new Error("Date incorecte");
 
       localStorage.setItem("currentUser", JSON.stringify(data.user));
 
@@ -53,7 +46,9 @@ export default function LoginPage() {
       }}
     >
       <h1 className="mb-4">Autentificare</h1>
+
       {error && <Alert variant="danger">{error}</Alert>}
+
       <Form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: "400px" }}>
         <Form.Group className="mb-3">
           <Form.Label>Email</Form.Label>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Container, Form, Button, Alert, Card } from "react-bootstrap";
+import { get, post, put } from "../api/api";
 
 export default function AdaugaSiAdministreazaAutocare() {
   const [form, setForm] = useState({
@@ -18,49 +19,39 @@ export default function AdaugaSiAdministreazaAutocare() {
   const [editForm, setEditForm] = useState({});
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/locatii/all")
-      .then((res) => res.json())
-      .then((data) => setLocatii(data));
-
+    get("/api/locatii/all").then(setLocatii);
     fetchAutocare();
   }, []);
 
   const fetchAutocare = () => {
-    fetch("http://localhost:5000/api/autocare-disponibile")
-      .then((res) => res.json())
-      .then((data) => setAutocare(data));
+    get("/api/autocare-disponibile").then(setAutocare);
   };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    fetch("http://localhost:5000/api/autocar/add", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setSuccess(true);
-          setForm({
-            tip: "",
-            numar_locuri: "",
-            idplecare: "",
-            idsosire: "",
-            numar_inmatriculare: "",
-          });
-          setError("");
-          fetchAutocare();
-        } else {
-          setError("Eroare la salvarea autocarului.");
-        }
-      })
-      .catch(() => setError("Serverul nu răspunde."));
+    try {
+      const data = await post("/api/autocar/add", form);
+      if (data.success) {
+        setSuccess(true);
+        setForm({
+          tip: "",
+          numar_locuri: "",
+          idplecare: "",
+          idsosire: "",
+          numar_inmatriculare: "",
+        });
+        setError("");
+        fetchAutocare();
+      } else {
+        setError("Eroare la salvarea autocarului.");
+      }
+    } catch {
+      setError("Serverul nu răspunde.");
+    }
   };
 
   const handleEdit = (index) => {
@@ -68,29 +59,25 @@ export default function AdaugaSiAdministreazaAutocare() {
     setEditIndex(index);
     setEditForm({
       ...autocar,
-      idplecare: "", // dacă vrei să le poată schimba
+      idplecare: "",
       idsosire: "",
     });
   };
 
-  const handleEditSave = (id) => {
-    fetch("http://localhost:5000/api/autocar/update", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...editForm, idtransport: id }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setSuccess(true);
-          setError("");
-          setEditIndex(null);
-          fetchAutocare();
-        } else {
-          setError("Eroare la actualizare.");
-        }
-      })
-      .catch(() => setError("Serverul nu răspunde."));
+  const handleEditSave = async (id) => {
+    try {
+      const data = await put("/api/autocar/update", { ...editForm, idtransport: id });
+      if (data.success) {
+        setSuccess(true);
+        setError("");
+        setEditIndex(null);
+        fetchAutocare();
+      } else {
+        setError("Eroare la actualizare.");
+      }
+    } catch {
+      setError("Serverul nu răspunde.");
+    }
   };
 
   return (
@@ -108,7 +95,6 @@ export default function AdaugaSiAdministreazaAutocare() {
       {success && <Alert variant="success" className="w-100 text-center" style={{ maxWidth: "600px" }}>Operațiune efectuată cu succes!</Alert>}
       {error && <Alert variant="danger" className="w-100 text-center" style={{ maxWidth: "600px" }}>{error}</Alert>}
 
-      {/* Formular adăugare */}
       <Form style={{ maxWidth: "600px", width: "100%" }} onSubmit={handleSubmit}>
         <Form.Group className="mb-3 text-start">
           <Form.Label>Tip</Form.Label>
@@ -151,7 +137,6 @@ export default function AdaugaSiAdministreazaAutocare() {
         </div>
       </Form>
 
-      {/* Lista autocare */}
       <Card className="mt-5 p-4 bg-transparent shadow text-center" style={{ color: "white", width: "100%", maxWidth: "900px" }}>
         <h4 className="mb-4">Autocare existente</h4>
         {autocare.map((auto, index) => (
