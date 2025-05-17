@@ -3,7 +3,7 @@ const cors = require('cors');
 //const fetch = require('node-fetch');
 const app = express();
 const PORT = process.env.PORT || 5000;
-
+require("dotenv").config();
 
 app.use(cors());
 app.use(express.json());
@@ -21,12 +21,15 @@ app.listen(PORT, () => {
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'proiect_pw',
-  password: 'parola123',
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }, // ← esențial pe Render
 });
+
+
+pool
+  .connect()
+  .then(() => console.log(" Conexiune DB realizată"))
+  .catch((err) => console.error(" Eroare la conexiunea DB:", err));
 
 // Aici vine ruta pentru înregistrare:
 app.post('/api/register', async (req, res) => {
