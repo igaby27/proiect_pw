@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Container, Form, Button, Alert } from "react-bootstrap";
+import { get, del } from "../api/api"; // ✅ Import corect pentru backend
 
 export default function StergeCursa() {
   const [curse, setCurse] = useState([]);
@@ -8,8 +9,7 @@ export default function StergeCursa() {
   const [error, setError] = useState("");
 
   const incarcaCurse = () => {
-    fetch("http://localhost:5000/api/curse-de-sters")
-      .then((res) => res.json())
+    get("/api/curse-de-sters")
       .then((data) => setCurse(Array.isArray(data) ? data : []))
       .catch(() => setError("Nu s-au putut încărca cursele."));
   };
@@ -18,7 +18,7 @@ export default function StergeCursa() {
     incarcaCurse();
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!selectedIdora) {
@@ -26,22 +26,20 @@ export default function StergeCursa() {
       return;
     }
 
-    fetch(`http://localhost:5000/api/sterge-cursa/${selectedIdora}`, {
-      method: "DELETE",
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setSuccess(true);
-          setError("");
-          incarcaCurse();
-          setSelectedIdora("");
-        } else {
-          setSuccess(false);
-          setError(data.message || "Cursa nu a fost ștearsă.");
-        }
-      })
-      .catch(() => setError("Eroare la conectarea cu serverul."));
+    try {
+      const data = await del(`/api/sterge-cursa/${selectedIdora}`);
+      if (data.success) {
+        setSuccess(true);
+        setError("");
+        incarcaCurse();
+        setSelectedIdora("");
+      } else {
+        setSuccess(false);
+        setError(data.message || "Cursa nu a fost ștearsă.");
+      }
+    } catch {
+      setError("Eroare la conectarea cu serverul.");
+    }
   };
 
   return (

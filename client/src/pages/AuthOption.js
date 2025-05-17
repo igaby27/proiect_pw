@@ -1,31 +1,30 @@
 import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Button, Spinner } from "react-bootstrap";
 
-const Loader = () => {
-  return (
-    <div
-      style={{
-        height: "100vh",
-        background: "linear-gradient(to bottom, #007bff, #000)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Spinner animation="border" variant="light" />
-    </div>
-  );
-};
+// Loader component
+const Loader = () => (
+  <div
+    style={{
+      height: "100vh",
+      background: "linear-gradient(to bottom, #007bff, #000)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <Spinner animation="border" variant="light" />
+  </div>
+);
 
 export default function AuthOptionsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1000); // Simulăm încărcarea
+    const timer = setTimeout(() => setLoading(false), 1000);
     return () => clearTimeout(timer);
   }, []);
 
-  if (loading) return <Loader />; // Afișăm loader-ul dacă suntem în stare de încărcare
+  if (loading) return <Loader />;
 
   return (
     <Container
@@ -45,7 +44,7 @@ export default function AuthOptionsPage() {
         <Col xs={12} md={6} className="mb-4">
           <Button
             variant="primary"
-            className="w-100 py-3 fs-5 custom-button"
+            className="w-100 py-3 fs-5"
             href="/login"
           >
             Login
@@ -54,7 +53,7 @@ export default function AuthOptionsPage() {
         <Col xs={12} md={6} className="mb-4">
           <Button
             variant="secondary"
-            className="w-100 py-3 fs-5 custom-button"
+            className="w-100 py-3 fs-5"
             href="/register"
           >
             Creează cont

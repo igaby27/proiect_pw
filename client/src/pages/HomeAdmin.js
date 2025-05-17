@@ -1,76 +1,32 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Button } from "react-bootstrap";
-import Loader from "./Loader"; // Importăm loader-ul
-import CursaHarta from "./MockupCursa"; // asigură-te că path-ul e corect
+import Loader from "./Loader";
+import CursaHarta from "./MockupCursa";
 import "leaflet/dist/leaflet.css";
 import { useNavigate } from "react-router-dom";
-
-
-
 
 export default function HomeCompanie() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
-
-
   const navigate = useNavigate();
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("currentUser"));
-    
-    // Nu este logat sau nu are rolul corect
+
     if (!user || user.rol !== "companie") {
-      navigate("/login"); // sau "/"
+      navigate("/login");
+      return;
     }
-  }, []);
 
+    setUsername(user.username);
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, [navigate]);
 
+  const redirect = (path) => window.location.href = path;
 
+  if (loading) return <Loader />;
 
-  useEffect(() => {
-      const timer = setTimeout(() => setLoading(false), 1000); // Simulăm încărcarea
-      return () => clearTimeout(timer);
-  }, []);
-  
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("currentUser"));
-    if (user && user.username) {
-      setUsername(user.username);
-    }
-  }, []);
-
-  const handleAutocar = () => {
-    // Aici integrezi logica de backend pentru adăugarea/modificarea unui autocar
-    // Exemplu: dacă există deja autocarul, îl modifici, altfel îl adaugi
-    window.location.href = "/adauga-autocar"; // redirecționează la pagina dedicată
-  };
-
-  const handleStergeAutocar = () => {
-    // Aici integrezi logica de backend pentru ștergerea unui autocar
-    window.location.href = "/sterge-autocar";
-  };
-
-  const handleCursa = () => {
-    // Aici integrezi logica de backend pentru adăugarea/modificarea unei curse
-    // Exemplu: dacă cursa există deja (ex. cu aceleași date), o modifici
-    window.location.href = "/adauga-cursa";
-  };
-
-  const handleStergeCursa = () => {
-    // Aici integrezi logica de backend pentru ștergerea unei curse
-    window.location.href = "/sterge-cursa";
-  };
-  const handleLocatie = () => {
-    window.location.href = "/adauga-locatie";
-    };
-    
-  const handleStergeLocatie = () => {
-    window.location.href = "/sterge-locatie";
-    };
-    
-  
-
-  if (loading) return <Loader />; // Afișăm loader-ul dacă suntem în stare de încărcare
   return (
     <Container
       fluid
@@ -81,8 +37,7 @@ export default function HomeCompanie() {
         color: "white",
       }}
     >
-      {/* Titlu și username */}
-      <Row className="mb-4 justify-content-between align-items-start" style={{ paddingInline: "1rem" }}>
+      <Row className="mb-4 justify-content-between align-items-start px-3">
         <Col xs={12} className="text-center">
           <h1 style={{ fontSize: "3rem" }}>Home</h1>
         </Col>
@@ -92,108 +47,56 @@ export default function HomeCompanie() {
           </a>
         </Col>
       </Row>
-      
-      
-      
-      {/* Secțiunea de locații */}
-      <Row className="mb-5 px-3">
-        <Col>
-          <h2 className="mb-3">Gestionare Locații</h2>
-          <Row>
-            <Col xs={12} md={6} className="mb-3">
-              <Button
-                variant="success"
-                className="w-100 py-3 fs-5"
-                onClick={handleLocatie}
-              >
-                Adaugă / Modifică Locație
-              </Button>
-            </Col>
-            <Col xs={12} md={6}>
-              <Button
-                variant="danger"
-                className="w-100 py-3 fs-5"
-                onClick={handleStergeLocatie}
-              >
-                Șterge Locație
-              </Button>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
 
-      {/* Secțiunea de autocar */}
-      <Row className="mb-5 px-3">
-        <Col>
-          <h2 className="mb-3">Gestionare Autocare</h2>
-          <Row>
-            <Col xs={12} md={6} className="mb-3">
-              <Button
-                variant="success"
-                className="w-100 py-3 fs-5"
-                onClick={handleAutocar}
-              >
-                Adaugă / Modifică Autocar
-              </Button>
-            </Col>
-            <Col xs={12} md={6}>
-              <Button
-                variant="danger"
-                className="w-100 py-3 fs-5"
-                onClick={handleStergeAutocar}
-              >
-                Șterge Autocar
-              </Button>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+      {/* Gestionare locații */}
+      <Section title="Gestionare Locații" leftBtn="Adaugă / Modifică Locație" rightBtn="Șterge Locație" leftPath="/adauga-locatie" rightPath="/sterge-locatie" redirect={redirect} />
 
-      {/* Secțiunea de curse */}
-      <Row className="mb-5 px-3">
-        <Col>
-          <h2 className="mb-3">Gestionare Curse</h2>
-          <Row>
-            <Col xs={12} md={6} className="mb-3">
-              <Button
-                variant="success"
-                className="w-100 py-3 fs-5"
-                onClick={handleCursa}
-              >
-                Adaugă / Modifică Cursă
-              </Button>
-            </Col>
-            <Col xs={12} md={6}>
-              <Button
-                variant="danger"
-                className="w-100 py-3 fs-5"
-                onClick={handleStergeCursa}
-              >
-                Șterge Cursă
-              </Button>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+      {/* Gestionare autocare */}
+      <Section title="Gestionare Autocare" leftBtn="Adaugă / Modifică Autocar" rightBtn="Șterge Autocar" leftPath="/adauga-autocar" rightPath="/sterge-autocar" redirect={redirect} />
+
+      {/* Gestionare curse */}
+      <Section title="Gestionare Curse" leftBtn="Adaugă / Modifică Cursă" rightBtn="Șterge Cursă" leftPath="/adauga-cursa" rightPath="/sterge-cursa" redirect={redirect} />
 
       {/* Hartă */}
       <Row className="mb-2 px-3">
         <Col>
           <h4 style={{ fontWeight: "bold" }}>Vizualizează harta curselor viitoare</h4>
         </Col>
-        </Row>
-          <Row className="mb-4 px-3">
-            <Col>
-              <div className="border rounded overflow-hidden shadow" style={{ height: "500px" }}>
-                  <CursaHarta />
-              </div>
-            </Col>
-        </Row>
-      
+      </Row>
+      <Row className="mb-4 px-3">
+        <Col>
+          <div className="border rounded overflow-hidden shadow" style={{ height: "500px" }}>
+            <CursaHarta />
+          </div>
+        </Col>
+      </Row>
+
       {/* Contact */}
       <Row className="text-center pt-4" style={{ fontSize: "1.1rem" }}>
         <Col>Contact: contact@curseauto.ro | Telefon: 0723 456 789</Col>
       </Row>
     </Container>
+  );
+}
+
+function Section({ title, leftBtn, rightBtn, leftPath, rightPath, redirect }) {
+  return (
+    <Row className="mb-5 px-3">
+      <Col>
+        <h2 className="mb-3">{title}</h2>
+        <Row>
+          <Col xs={12} md={6} className="mb-3">
+            <Button variant="success" className="w-100 py-3 fs-5" onClick={() => redirect(leftPath)}>
+              {leftBtn}
+            </Button>
+          </Col>
+          <Col xs={12} md={6}>
+            <Button variant="danger" className="w-100 py-3 fs-5" onClick={() => redirect(rightPath)}>
+              {rightBtn}
+            </Button>
+          </Col>
+        </Row>
+      </Col>
+    </Row>
   );
 }

@@ -1,15 +1,16 @@
 // src/pages/CreateAccount.js
 import React, { useState } from "react";
-import { Container, Form, Button, Row, Col } from "react-bootstrap";
+import { Container, Form, Button } from "react-bootstrap";
+import { post } from "../api/api";
 
 export default function CreateAccount() {
   const [formData, setFormData] = useState({
     username: "",
     email: "",
-    parola: "",           
-    telefon: "",          
-    rol: "user",          
-    nume_companie: "",
+    parola: "",
+    telefon: "",
+    rol: "user",
+    companie: "",
     oras: "",
     masini: "",
   });
@@ -21,54 +22,39 @@ export default function CreateAccount() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
+  const validateForm = () => {
     const newErrors = {};
     if (!formData.username) newErrors.username = "Username este obligatoriu";
     if (!formData.email) newErrors.email = "Email-ul este obligatoriu";
     if (!formData.parola) newErrors.parola = "Parola este obligatorie";
     if (!formData.telefon) newErrors.telefon = "Numărul de telefon este obligatoriu";
 
-    if (formData.rol === "admin") {
+    if (formData.rol === "companie") {
       if (!formData.companie) newErrors.companie = "Numele companiei este obligatoriu";
       if (!formData.oras) newErrors.oras = "Orașul este obligatoriu";
       if (!formData.masini) newErrors.masini = "Numărul de vehicule este obligatoriu";
     }
 
     setErrors(newErrors);
-    if (Object.keys(newErrors).length === 0) {
-      // === INTEGRARE BACKEND ===
-      // Trimite datele formData către backend pentru crearea contului
-      // fetch('/api/register', { method: 'POST', body: JSON.stringify(formData) })
-      //   .then(...)
-      // =========================
+    return Object.keys(newErrors).length === 0;
+  };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-      fetch("http://localhost:5000/api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            localStorage.setItem("currentUser", JSON.stringify({ username: formData.username }));
-            window.location.href = "/home-user";
-          } else {
-            alert("Eroare la înregistrare.");
-          }
-        })
-        .catch((err) => {
-          console.error("Eroare:", err);
-          alert("Eroare la conectarea cu serverul.");
-        });
-      
+    if (!validateForm()) return;
 
-      localStorage.setItem("currentUser", JSON.stringify({ username: formData.username }));
-      window.location.href = "/home-user";
+    try {
+      const data = await post("/api/register", formData);
+      if (data.success) {
+        localStorage.setItem("currentUser", JSON.stringify({ username: formData.username, rol: formData.rol }));
+        window.location.href = "/home-user";
+      } else {
+        alert("Eroare la înregistrare.");
+      }
+    } catch (err) {
+      console.error("Eroare:", err);
+      alert("Eroare la conectarea cu serverul.");
     }
   };
 

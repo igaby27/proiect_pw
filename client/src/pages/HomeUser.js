@@ -1,10 +1,12 @@
+// client/src/pages/HomeUser.js
+
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Button, Card } from "react-bootstrap";
-import Loader from "./Loader";
-import CursaHarta from "./MockupCursa";
+import Loader from "../components/Loader";
+import CursaHarta from "../components/MockupCursa";
 import "leaflet/dist/leaflet.css";
 import { useNavigate } from "react-router-dom";
-
+import { get } from "../api/api";
 
 export default function HomeUser() {
   const [username, setUsername] = useState("");
@@ -15,41 +17,22 @@ export default function HomeUser() {
   const [curseTrecute, setCurseTrecute] = useState([]);
   const [loading, setLoading] = useState(true);
 
-
-
   const navigate = useNavigate();
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("currentUser"));
-
     if (!user || user.rol !== "user") {
-      navigate("/login"); // Sau "/"
-    }
-  }, []);
-
-
-
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("currentUser"));
-    if (user?.username) {
+      navigate("/login");
+    } else {
       setUsername(user.username);
 
-      // Obține id-ul userului
-      fetch(`http://localhost:5000/api/users/${user.username}`)
-        .then(res => res.json())
-        .then(data => {
+      get(`/api/users/${user.username}`)
+        .then((data) => {
           if (data?.id) {
             setUserId(data.id);
 
-            // Obține rezervările userului
-            fetch(`http://localhost:5000/api/rezervarile-mele?iduser=${data.id}`)
-              .then(res => res.json())
-              .then(rez => {
+            get(`/api/rezervarile-mele?iduser=${data.id}`)
+              .then((rez) => {
                 if (Array.isArray(rez)) {
                   setRezervari(rez);
                   separaRezervariDupaData(rez);
@@ -57,31 +40,30 @@ export default function HomeUser() {
                   setRezervari([]);
                 }
               })
-              .catch(err => console.error("Eroare rezervări:", err));
+              .catch((err) => console.error("Eroare rezervări:", err));
           }
         })
-        .catch(err => console.error("Eroare utilizator:", err));
+        .catch((err) => console.error("Eroare utilizator:", err));
     }
 
-    // Obține curse disponibile
-    // Obține curse disponibile (care au și oră de plecare)
-    fetch("http://localhost:5000/api/autocare-cu-ora")
-      .then(res => res.json())
-      .then(data => setCurse(data))
-      .catch(err => console.error("Eroare curse:", err));
+    get("/api/autocare-cu-ora")
+      .then((data) => setCurse(data))
+      .catch((err) => console.error("Eroare curse:", err));
 
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
   }, []);
 
   const separaRezervariDupaData = (lista) => {
     const azi = new Date();
-    azi.setHours(0, 0, 0, 0); // elimină ora, minut, secunde
+    azi.setHours(0, 0, 0, 0);
 
     const viitoare = [];
     const trecute = [];
 
     lista.forEach((rez) => {
       const dataRez = new Date(rez.data_rezervare);
-      dataRez.setHours(0, 0, 0, 0); // ignoră ora
+      dataRez.setHours(0, 0, 0, 0);
 
       if (dataRez >= azi) {
         viitoare.push(rez);
@@ -94,8 +76,8 @@ export default function HomeUser() {
     setCurseTrecute(trecute);
   };
 
-  const handleRedirect1 = () => window.location.href = "/rezerva-cursa";
-  const handleRedirect2 = () => window.location.href = "/anuleaza-cursa";
+  const handleRedirect1 = () => (window.location.href = "/rezerva-cursa");
+  const handleRedirect2 = () => (window.location.href = "/anuleaza-cursa");
 
   if (loading) return <Loader />;
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Button } from "react-bootstrap";
 import Loader from "./Loader";
 import CursaHarta from "./MockupCursa";
+import { get } from "../api/api"; // ✅ adăugat
 import "leaflet/dist/leaflet.css";
 
 export default function HomeGuest() {
@@ -14,8 +15,7 @@ export default function HomeGuest() {
   }, []);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/autocare-disponibile")
-      .then(res => res.json())
+    get("/api/autocare-disponibile")
       .then(data => {
         setCurse(Array.isArray(data) ? data : []);
       })
@@ -25,7 +25,7 @@ export default function HomeGuest() {
   }, []);
 
   const handleRedirect = () => {
-    window.location.href = "/login"; // Redirecționează spre login
+    window.location.href = "/login";
   };
 
   if (loading) return <Loader />;
@@ -40,12 +40,12 @@ export default function HomeGuest() {
         color: "white",
       }}
     >
-      {/* Titlu */}
       <Row className="mb-4 justify-content-center text-center">
         <Col xs={12}>
           <h1 style={{ fontSize: "3rem" }}>Home</h1>
         </Col>
       </Row>
+
       <Row className="justify-content-between align-items-center mb-3 px-3">
         <Col xs={12} md={6}></Col>
         <Col xs={12} md={6} className="text-end">
@@ -55,15 +55,13 @@ export default function HomeGuest() {
         </Col>
       </Row>
 
-      {/* Mesaj + butoane */}
       <Row className="mb-4 justify-content-center text-center px-3">
         <Col xs={12}>
           <h2 style={{ fontSize: "1.5rem" }}>Salut, dorești să rezervi o cursă?</h2>
         </Col>
       </Row>
-      
 
-            {/* Listă curse disponibile */}
+      {/* Curse disponibile */}
       <Row className="mb-4 px-3">
         <Col>
           <div
@@ -101,9 +99,7 @@ export default function HomeGuest() {
         </Col>
       </Row>
 
-
-
-      {/* Hartă curselor */}
+      {/* Hartă */}
       <Row className="mb-2 px-3">
         <Col>
           <h4 style={{ fontWeight: "bold" }}>Vizualizează harta curselor viitoare</h4>

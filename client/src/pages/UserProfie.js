@@ -1,41 +1,35 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Button, Card } from "react-bootstrap";
 import Loader from "./Loader";
+import { get } from "../api/api"; // 👈 Wrapper pentru GET global
 
 export default function UserProfile() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [telefon, setTelefon] = useState("");
   const [curseleActive, setCurseleActive] = useState([]);
-  const [curseleFinalizate, setCurseleFinalizate] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("currentUser"));
-    if (user && user.username) {
-      setUsername(user.username);
+    if (!user || !user.username) return;
 
-      fetch(`http://localhost:5000/api/users/${user.username}`)
-        .then((res) => res.json())
-        .then((userData) => {
-          setEmail(userData.email);
-          setTelefon(userData.telefon);
+    setUsername(user.username);
 
-          // Căutăm rezervările userului
-          if (userData.id) {
-            fetch(`http://localhost:5000/api/rezervarile-mele?iduser=${userData.id}`)
-              .then((res) => res.json())
-              .then((rez) => {
-                if (Array.isArray(rez)) {
-                  // Poți adăuga un filtru pentru "finalizate" după dată
-                  setCurseleActive(rez);
-                }
-              })
-              .catch((err) => console.error("Eroare la rezervări:", err));
-          }
-        })
-        .catch((err) => console.error("Eroare la preluarea utilizatorului:", err));
-    }
+    get(`/api/users/${user.username}`)
+      .then((userData) => {
+        setEmail(userData.email);
+        setTelefon(userData.telefon);
+
+        if (userData.id) {
+          get(`/api/rezervarile-mele?iduser=${userData.id}`)
+            .then((rez) => {
+              if (Array.isArray(rez)) setCurseleActive(rez);
+            })
+            .catch(() => console.error("Eroare rezervări"));
+        }
+      })
+      .catch(() => console.error("Eroare utilizator"));
   }, []);
 
   useEffect(() => {
@@ -60,12 +54,8 @@ export default function UserProfile() {
         padding: "2rem",
       }}
     >
-      <h1 className="mb-4" style={{ fontSize: "3rem" }}>
-        Profil utilizator
-      </h1>
-      <h3 className="mb-3" style={{ fontSize: "1.5rem" }}>
-        Bine ai venit, {username}!
-      </h3>
+      <h1 className="mb-4" style={{ fontSize: "3rem" }}>Profil utilizator</h1>
+      <h3 className="mb-3" style={{ fontSize: "1.5rem" }}>Bine ai venit, {username}!</h3>
 
       <p style={{ fontSize: "1.2rem" }}>
         <strong>Email:</strong> {email || "–"} <br />
@@ -92,8 +82,6 @@ export default function UserProfile() {
       ) : (
         <p>Nu ai curse rezervate în acest moment.</p>
       )}
-
-      
 
       <div className="d-flex gap-3 mt-4">
         <Button variant="success" size="lg" onClick={() => window.history.back()}>

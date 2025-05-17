@@ -1,44 +1,43 @@
 import React, { useEffect, useState } from "react";
 import { Container, Button, Row, Col, Alert } from "react-bootstrap";
+import { get, del } from "../api/api"; // Wrapper pentru API extern
 
 export default function StergereLocatie() {
-  const [locatii, setLocatii] = useState([]);
   const [folosite, setFolosite] = useState([]);
   const [nefolosite, setNefolosite] = useState([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/locatii-status")
-      .then((res) => res.json())
+    get("/api/locatii-status")
       .then((data) => {
-        if (!Array.isArray(data)) return setError("Eroare la încărcare locații.");
+        if (!Array.isArray(data)) {
+          setError("Eroare la încărcare locații.");
+          return;
+        }
 
-        const folosite = [];
-        const nefolosite = [];
+        const f = [];
+        const nf = [];
 
         data.forEach((loc) => {
-          if (loc.este_folosita) folosite.push(loc);
-          else nefolosite.push(loc);
+          loc.este_folosita ? f.push(loc) : nf.push(loc);
         });
 
-        setFolosite(folosite);
-        setNefolosite(nefolosite);
+        setFolosite(f);
+        setNefolosite(nf);
       })
       .catch(() => setError("Eroare la conectarea cu serverul."));
   }, []);
 
   const stergeLocatie = async (idlocatie, cuRezervari = false) => {
     if (cuRezervari) {
-      const confirm = window.confirm("Această locație este folosită. Vor fi șterse și autocarele, cursele și rezervările asociate. Continui?");
+      const confirm = window.confirm(
+        "Această locație este folosită. Vor fi șterse și autocarele, cursele și rezervările asociate. Continui?"
+      );
       if (!confirm) return;
     }
 
     try {
-      const res = await fetch(`http://localhost:5000/api/locatie/delete/${idlocatie}`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
+      const data = await del(`/api/locatie/delete/${idlocatie}`);
       if (data.success) window.location.reload();
       else setError(data.message || "Eroare la ștergere.");
     } catch {
@@ -66,9 +65,7 @@ export default function StergereLocatie() {
         <div style={{ width: "100%", maxWidth: "700px" }}>
           {nefolosite.map((loc) => (
             <Row key={loc.idlocatie} className="align-items-center mb-2 border-bottom pb-2">
-              <Col>
-                <span>{loc.nume} – {loc.adresa}</span>
-              </Col>
+              <Col>{loc.nume} – {loc.adresa}</Col>
               <Col xs="auto">
                 <Button
                   variant="danger"
@@ -90,9 +87,7 @@ export default function StergereLocatie() {
         <div style={{ width: "100%", maxWidth: "700px" }}>
           {folosite.map((loc) => (
             <Row key={loc.idlocatie} className="align-items-center mb-2 border-bottom pb-2">
-              <Col>
-                <span>{loc.nume} – {loc.adresa}</span>
-              </Col>
+              <Col>{loc.nume} – {loc.adresa}</Col>
               <Col xs="auto">
                 <Button
                   variant="warning"

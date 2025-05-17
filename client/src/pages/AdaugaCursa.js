@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Container, Form, Button, Alert, Card } from "react-bootstrap";
+import { get, post, put } from "../api/api";
 
 export default function AdaugaCursa() {
   const [autocareDisponibile, setAutocareDisponibile] = useState([]);
@@ -12,64 +13,57 @@ export default function AdaugaCursa() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/autocare-disponibile")
-      .then((res) => res.json())
-      .then((data) => setAutocareDisponibile(data))
+    get("/api/autocare-disponibile")
+      .then(setAutocareDisponibile)
       .catch(() => setError("Eroare la încărcarea autocarelor."));
-
+    
     refreshCurse();
   }, []);
 
   const refreshCurse = () => {
-    fetch("http://localhost:5000/api/curse-de-sters")
-      .then((res) => res.json())
+    get("/api/curse-de-sters")
       .then((data) => setCurseExistente(Array.isArray(data) ? data : []))
       .catch(() => setError("Eroare la încărcarea curselor."));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    fetch("http://localhost:5000/api/adauga-cursa", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const data = await post("/api/adauga-cursa", {
         autocarId: selectedAutocar,
         oraPlecare,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setSuccess(true);
-          setSelectedAutocar("");
-          setOraPlecare("");
-          refreshCurse();
-        } else {
-          setError("Eroare la salvarea cursei.");
-        }
-      })
-      .catch(() => setError("Serverul nu răspunde."));
+      });
+
+      if (data.success) {
+        setSuccess(true);
+        setSelectedAutocar("");
+        setOraPlecare("");
+        refreshCurse();
+      } else {
+        setError("Eroare la salvarea cursei.");
+      }
+    } catch {
+      setError("Serverul nu răspunde.");
+    }
   };
 
-  const handleEditSave = (idora) => {
+  const handleEditSave = async (idora) => {
     if (!idora || !editOra) return;
 
-    fetch("http://localhost:5000/api/cursa/update", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idora, ora: editOra }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setSuccess(true);
-          setEditIndex(null);
-          refreshCurse();
-        } else {
-          setError("Eroare la actualizare oră.");
-        }
-      });
+    try {
+      const data = await put("/api/cursa/update", { idora, ora: editOra });
+
+      if (data.success) {
+        setSuccess(true);
+        setEditIndex(null);
+        refreshCurse();
+      } else {
+        setError("Eroare la actualizare oră.");
+      }
+    } catch {
+      setError("Serverul nu răspunde.");
+    }
   };
 
   return (

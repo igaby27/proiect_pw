@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Container, Form, Button, Alert, Row, Col } from "react-bootstrap";
+import { get, del } from "../api/api"; // ✅
 
 export default function StergeAutocarPage() {
   const [autocareDisponibile, setAutocareDisponibile] = useState([]);
@@ -8,22 +9,18 @@ export default function StergeAutocarPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/autocare-disponibile")
-      .then((res) => res.json())
-      .then((data) => {
-        // Aflăm care autocare sunt rezervate
-        Promise.all(
+    get("/api/autocare-disponibile")
+      .then(async (data) => {
+        const verificari = await Promise.all(
           data.map((autocar) =>
-            fetch(`http://localhost:5000/api/rezervari-pe-autocar/${autocar.idtransport}`)
-              .then((res) => res.json())
-              .then((hasRezervari) => ({ ...autocar, rezervat: hasRezervari }))
+            get(`/api/rezervari-pe-autocar/${autocar.idtransport}`).then((hasRez) => ({
+              ...autocar,
+              rezervat: hasRez === true,
+            }))
           )
-        ).then((result) => {
-          const disponibile = result.filter((a) => !a.rezervat);
-          const rezervate = result.filter((a) => a.rezervat);
-          setAutocareDisponibile(disponibile);
-          setAutocareRezervate(rezervate);
-        });
+        );
+        setAutocareDisponibile(verificari.filter((a) => !a.rezervat));
+        setAutocareRezervate(verificari.filter((a) => a.rezervat));
       })
       .catch(() => setError("Eroare la încărcarea autocarelor."));
   }, []);
@@ -36,29 +33,16 @@ export default function StergeAutocarPage() {
         );
         if (!confirm) return;
 
-        // Ștergem rezervările
-        await fetch(`http://localhost:5000/api/sterge-rezervari-pe-autocar/${idtransport}`, {
-          method: "DELETE",
-        });
+        await del(`/api/sterge-rezervari-pe-autocar/${idtransport}`);
       }
 
-      // Apoi ștergem autocarul
-      const res = await fetch(`http://localhost:5000/api/autocar/${idtransport}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
+      const data = await del(`/api/autocar/${idtransport}`);
 
       if (data.success) {
         setSuccess("Autocar șters cu succes!");
         setError("");
-
-        // Actualizează listele după ștergere
-        setAutocareDisponibile((prev) =>
-          prev.filter((a) => a.idtransport !== idtransport)
-        );
-        setAutocareRezervate((prev) =>
-          prev.filter((a) => a.idtransport !== idtransport)
-        );
+        setAutocareDisponibile((prev) => prev.filter((a) => a.idtransport !== idtransport));
+        setAutocareRezervate((prev) => prev.filter((a) => a.idtransport !== idtransport));
       } else {
         setError(data.message || "Nu s-a putut șterge autocarul.");
       }
@@ -135,7 +119,7 @@ export default function StergeAutocarPage() {
       <Button
         variant="secondary"
         className="mt-5 px-4 py-2 fs-5"
-        onClick={() => window.location.href = "/home-companie"}
+        onClick={() => (window.location.href = "/home-companie")}
       >
         Înapoi
       </Button>

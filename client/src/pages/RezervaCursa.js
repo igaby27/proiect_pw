@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Form, Button, Card, Alert } from "react-bootstrap";
-import axios from "axios";
+import { get, post } from "../api/api"; // ✅ Wrapper pentru producție
 
 export default function RezervareCursaPage() {
   const [curseDisponibile, setCurseDisponibile] = useState([]);
@@ -12,15 +12,15 @@ export default function RezervareCursaPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    axios.get("http://localhost:5000/api/autocare-cu-ora")
-      .then((res) => setCurseDisponibile(res.data))
+    get("/api/autocare-cu-ora")
+      .then(setCurseDisponibile)
       .catch((err) => console.error("Eroare la încărcarea autocarelor:", err));
   }, []);
 
   useEffect(() => {
     if (rutaSelectata) {
-      axios.get(`http://localhost:5000/api/ora-plecare-transport/${rutaSelectata}`)
-        .then((res) => setCurse(res.data))
+      get(`/api/ora-plecare-transport/${rutaSelectata}`)
+        .then(setCurse)
         .catch((err) => console.error("Eroare la obținerea orelor:", err));
     }
   }, [rutaSelectata]);
@@ -29,7 +29,7 @@ export default function RezervareCursaPage() {
     e.preventDefault();
     const user = JSON.parse(localStorage.getItem("currentUser"));
 
-    if (!user || !user.email) {
+    if (!user?.email) {
       alert("Utilizatorul nu este autentificat.");
       return;
     }
@@ -40,7 +40,7 @@ export default function RezervareCursaPage() {
     }
 
     try {
-      await axios.post("http://localhost:5000/api/rezerva", {
+      await post("/api/rezerva", {
         email: user.email,
         idtransport: parseInt(rutaSelectata),
         idora: parseInt(oraSelectata),
@@ -51,7 +51,7 @@ export default function RezervareCursaPage() {
       setSuccess(true);
       setTimeout(() => {
         window.location.href = "/home-user";
-      }, 1000); // redirecționare după 1 sec.
+      }, 1000);
     } catch (err) {
       console.error("Eroare la rezervare:", err);
       alert("A apărut o eroare la salvarea rezervării.");
@@ -59,10 +59,20 @@ export default function RezervareCursaPage() {
   };
 
   return (
-    <Container fluid style={{ minHeight: "100vh", background: "linear-gradient(to bottom, #007bff, #000)", padding: "2rem", color: "white" }}>
+    <Container
+      fluid
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(to bottom, #007bff, #000)",
+        padding: "2rem",
+        color: "white",
+      }}
+    >
       <Row className="justify-content-center mb-4">
         <Col xs={12} md={8}>
-          <h1 className="text-center mb-4" style={{ fontSize: "2.5rem" }}>Rezervare Cursă</h1>
+          <h1 className="text-center mb-4" style={{ fontSize: "2.5rem" }}>
+            Rezervare Cursă
+          </h1>
 
           <Card className="p-4 bg-transparent shadow" style={{ color: "white" }}>
             {success && <Alert variant="success">Rezervare efectuată cu succes! Redirecționare...</Alert>}
@@ -70,7 +80,11 @@ export default function RezervareCursaPage() {
             <Form onSubmit={handleSubmit}>
               <Form.Group className="mb-3">
                 <Form.Label>Rută</Form.Label>
-                <Form.Select value={rutaSelectata} onChange={(e) => setRutaSelectata(e.target.value)} required>
+                <Form.Select
+                  value={rutaSelectata}
+                  onChange={(e) => setRutaSelectata(e.target.value)}
+                  required
+                >
                   <option value="">Alege ruta</option>
                   {curseDisponibile.map((cursa) => (
                     <option key={cursa.idtransport} value={cursa.idtransport}>
@@ -82,7 +96,11 @@ export default function RezervareCursaPage() {
 
               <Form.Group className="mb-3">
                 <Form.Label>Ora plecare</Form.Label>
-                <Form.Select value={oraSelectata} onChange={(e) => setOraSelectata(e.target.value)} required>
+                <Form.Select
+                  value={oraSelectata}
+                  onChange={(e) => setOraSelectata(e.target.value)}
+                  required
+                >
                   <option value="">Alege ora</option>
                   {curse.map((c) => (
                     <option key={c.idora} value={c.idora}>

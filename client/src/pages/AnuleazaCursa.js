@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Form, Button, Card } from "react-bootstrap";
+import { get, del } from "../api/api";
 
 export default function AnuleazaCursaPage() {
   const [rezervari, setRezervari] = useState([]);
@@ -9,14 +10,10 @@ export default function AnuleazaCursaPage() {
     const user = JSON.parse(localStorage.getItem("currentUser"));
 
     if (user?.username) {
-      // Obține ID-ul userului
-      fetch(`http://localhost:5000/api/users/${user.username}`)
-        .then(res => res.json())
+      get(`/api/users/${user.username}`)
         .then(data => {
           if (data?.id) {
-            // Apelează rezervările
-            fetch(`http://localhost:5000/api/rezervarile-mele?iduser=${data.id}`)
-              .then(res => res.json())
+            get(`/api/rezervarile-mele?iduser=${data.id}`)
               .then(rez => {
                 setRezervari(Array.isArray(rez) ? rez : []);
               })
@@ -31,11 +28,7 @@ export default function AnuleazaCursaPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch(`http://localhost:5000/api/sterge-rezervare/${selectedId}`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
+      const data = await del(`/api/sterge-rezervare/${selectedId}`);
 
       if (data.success) {
         alert("Rezervarea a fost anulată cu succes!");
