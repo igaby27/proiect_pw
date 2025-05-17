@@ -146,26 +146,74 @@ app.post('/api/locatii/add', async (req, res) => {
   }
 });
 
+// API Express pentru ștergerea unei locații cu tot ce implică (autocar, curse, rezervări)
+app.get("/api/locatii-status", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT l.idlocatie, l.nume, l.adresa,
+        EXISTS (
+          SELECT 1 FROM transport t
+          WHERE t.idplecare = l.idlocatie OR t.idsosire = l.idlocatie
+        ) AS este_folosita
+      FROM locatii l
+    `);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Eroare la obținerea locațiilor:", err);
+    res.status(500).json({ message: "Eroare server" });
+  }
+});
 
 
+//sterge locatia
+app.delete("/api/locatie/delete/:idlocatie", async (req, res) => {
+  const { idlocatie } = req.params;
 
-app.delete('/api/locatii/delete', async (req, res) => {
-  const { nume, adresa } = req.body;
+  const client = await pool.connect();
 
   try {
-    const result = await pool.query(
-      'DELETE FROM locatii WHERE nume = $1 AND adresa = $2 RETURNING *',
-      [nume, adresa]
+    await client.query("BEGIN");
+
+    // 1. Găsește toate autocarele care au această locație ca plecare sau sosire
+    const autocare = await client.query(
+      `SELECT idtransport FROM transport WHERE idplecare = $1 OR idsosire = $1`,
+      [idlocatie]
     );
 
-    if (result.rowCount === 0) {
-      return res.json({ success: false, message: "Locația nu a fost găsită" });
+    const idsTransport = autocare.rows.map((r) => r.idtransport);
+
+    if (idsTransport.length > 0) {
+      // 2. Șterge rezervările asociate transporturilor
+      await client.query(
+        `DELETE FROM rezervari WHERE idtransport = ANY($1::int[])`,
+        [idsTransport]
+      );
+
+      // 3. Șterge cursele asociate
+      await client.query(
+        `DELETE FROM ora_plecare WHERE idtransport = ANY($1::int[])`,
+        [idsTransport]
+      );
+
+      // 4. Șterge autocarele (transporturile)
+      await client.query(
+        `DELETE FROM transport WHERE idtransport = ANY($1::int[])`,
+        [idsTransport]
+      );
     }
 
+    // 5. Șterge locația propriu-zisă
+    await client.query(`DELETE FROM locatii WHERE idlocatie = $1`, [idlocatie]);
+
+    await client.query("COMMIT");
     res.json({ success: true });
   } catch (err) {
-    console.error("Eroare la ștergere locație:", err);
-    res.status(500).json({ success: false });
+    await client.query("ROLLBACK");
+    console.error("Eroare la ștergerea locației:", err);
+    res.status(500).json({ success: false, message: "Eroare la server" });
+  } finally {
+    client.release();
   }
 });
 
@@ -247,20 +295,20 @@ app.post('/api/adauga-cursa', async (req, res) => {
 //STERGE AUTOCARUL
 
 app.delete('/api/autocar/:id', async (req, res) => {
-  const { id } = req.params; // Preia ID-ul autocarului din URL
-
+  const { id } = req.params;
+  
   try {
-    // Șterge înregistrările din tabela ora_plecare care fac referire la acest autocar
+    // Șterge înregistrările din ora_plecare
     await pool.query('DELETE FROM ora_plecare WHERE idtransport = $1', [id]);
 
-    // Șterge autocarul din tabela transport
+    // Șterge autocarul
     const result = await pool.query('DELETE FROM transport WHERE idtransport = $1 RETURNING *', [id]);
 
     if (result.rowCount === 0) {
       return res.json({ success: false, message: "Autocarul nu a fost găsit" });
     }
 
-    res.json({ success: true, message: "Autocar șters cu succes!" });
+    res.json({ success: true });
   } catch (err) {
     console.error("Eroare la ștergerea autocarului:", err);
     res.status(500).json({ success: false });
@@ -274,46 +322,63 @@ app.get('/api/curse-de-sters', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        t.idtransport AS id,
+        o.idora,
+        t.idtransport,
         t.numar_inmatriculare,
         l1.nume AS plecare,
         l2.nume AS sosire,
         o.ora
       FROM transport t
-      LEFT JOIN locatii l1 ON t.idplecare = l1.idlocatie
-      LEFT JOIN locatii l2 ON t.idsosire = l2.idlocatie
-      LEFT JOIN ora_plecare o ON t.idtransport = o.idtransport
-      where o.idtransport is not null
+      JOIN ora_plecare o ON t.idtransport = o.idtransport
+      JOIN locatii l1 ON t.idplecare = l1.idlocatie
+      JOIN locatii l2 ON t.idsosire = l2.idlocatie
     `);
     res.json(result.rows);
   } catch (err) {
-    console.error("Eroare la obținerea curselor de șters:", err);
-    res.status(500).json({ message: "Eroare la server" });
+    console.error("Eroare la obținerea curselor:", err);
+    res.status(500).json({ message: "Eroare server" });
   }
 });
+
 
 
 
 
 //sterge cursa din ora_plecare
 
-app.delete('/api/sterge-cursa/:id', async (req, res) => {
-  const { id } = req.params; // Preia ID-ul cursei din URL
+app.delete('/api/sterge-cursa/:idora', async (req, res) => {
+  const { idora } = req.params;
 
   try {
-    // Șterge cursa din tabela ora_plecare
-    const result = await pool.query('DELETE FROM ora_plecare WHERE idtransport = $1 RETURNING *', [id]);
+    // 1. Aflăm ora și transportul asociate cursei
+    const detalii = await pool.query(
+      `SELECT ora, idtransport FROM ora_plecare WHERE idora = $1`,
+      [idora]
+    );
 
-    if (result.rowCount === 0) {
-      return res.json({ success: false, message: "Cursa nu a fost găsită" });
+    if (detalii.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Cursa nu a fost găsită." });
     }
 
-    res.json({ success: true, message: "Cursa a fost ștearsă cu succes!" });
+    const { ora, idtransport } = detalii.rows[0];
+
+    // 2. Ștergem rezervările care aveau acea oră și acel transport
+    await pool.query(
+      `DELETE FROM rezervari WHERE idtransport = $1 AND ora_rezervare = $2`,
+      [idtransport, ora]
+    );
+
+    // 3. Ștergem ora de plecare
+    await pool.query(`DELETE FROM ora_plecare WHERE idora = $1`, [idora]);
+
+    res.json({ success: true });
   } catch (err) {
     console.error("Eroare la ștergerea cursei:", err);
-    res.status(500).json({ success: false, message: "Eroare la server" });
+    res.status(500).json({ success: false, message: "Eroare server." });
   }
 });
+
+
 
 
 
@@ -394,22 +459,21 @@ app.get('/api/ora-plecare-transport/:idtransport', async (req, res) => {
 
 
 //api pentru rezervare a cursei din RezervaCursa.js
+
 app.post('/api/rezerva', async (req, res) => {
-  const { email, idtransport, idora, numar_locuri } = req.body;
+  const { email, idtransport, idora, numar_locuri, data } = req.body;
 
   try {
-    // 1. Obține id-ul userului
     const userRes = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (userRes.rows.length === 0) {
       return res.status(404).json({ success: false, message: "Utilizatorul nu a fost găsit" });
     }
+
     const iduser = userRes.rows[0].id;
 
-    // 2. Obține ora de plecare
     const oraRes = await pool.query('SELECT ora FROM ora_plecare WHERE idora = $1', [idora]);
     const ora_rezervare = oraRes.rows[0]?.ora || null;
 
-    // 3. Verifică locurile disponibile
     const transportRes = await pool.query('SELECT numar_locuri FROM transport WHERE idtransport = $1', [idtransport]);
     const locuriDisponibile = transportRes.rows[0]?.numar_locuri || 0;
 
@@ -417,13 +481,11 @@ app.post('/api/rezerva', async (req, res) => {
       return res.status(400).json({ success: false, message: `Nu sunt suficiente locuri disponibile. Mai sunt ${locuriDisponibile}.` });
     }
 
-    // 4. Creează rezervarea
     await pool.query(`
       INSERT INTO rezervari (iduser, idtransport, data_rezervare, numar_locuri, ora_rezervare)
-      VALUES ($1, $2, NOW(), $3, $4)
-    `, [iduser, idtransport, numar_locuri, ora_rezervare]);
+      VALUES ($1, $2, $3, $4, $5)
+    `, [iduser, idtransport, data, numar_locuri, ora_rezervare]);
 
-    // 5. Actualizează numărul de locuri rămase
     await pool.query(`
       UPDATE transport SET numar_locuri = numar_locuri - $1 WHERE idtransport = $2
     `, [numar_locuri, idtransport]);
@@ -434,6 +496,7 @@ app.post('/api/rezerva', async (req, res) => {
     res.status(500).json({ success: false, message: "Eroare la rezervare" });
   }
 });
+
 
 
 
@@ -534,3 +597,104 @@ app.delete('/api/sterge-rezervare/:id', async (req, res) => {
   }
 });
 
+
+
+//Actualizeaza locatiile
+app.put('/api/locatii/update', async (req, res) => {
+  const { idlocatie, nume, adresa } = req.body;
+
+  try {
+    await pool.query(
+      `UPDATE locatii SET nume = $1, adresa = $2 WHERE idlocatie = $3`,
+      [nume, adresa, idlocatie]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Eroare la actualizarea locației:", err);
+    res.status(500).json({ success: false });
+  }
+});
+
+//actualizeaza autocar
+app.put("/api/autocar/update", async (req, res) => {
+  const { idtransport, tip, numar_locuri, numar_inmatriculare } = req.body;
+
+  try {
+    await pool.query(`
+      UPDATE transport 
+      SET tip = $1, numar_locuri = $2, numar_inmatriculare = $3 
+      WHERE idtransport = $4
+    `, [tip, numar_locuri, numar_inmatriculare, idtransport]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Eroare la actualizare autocar:", err);
+    res.status(500).json({ success: false });
+  }
+});
+
+//actualizeaza cursele
+app.put('/api/cursa/update', async (req, res) => {
+  const { idora, ora } = req.body;
+
+  try {
+    await pool.query(
+      'UPDATE ora_plecare SET ora = $1 WHERE idora = $2',
+      [ora, idora]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Eroare la actualizarea orei:", err);
+    res.status(500).json({ success: false });
+  }
+});
+
+//ia autocare rezervate
+app.get('/api/rezervari-pe-autocar/:idtransport', async (req, res) => {
+  const { idtransport } = req.params;
+
+  try {
+    const result = await pool.query(
+      'SELECT 1 FROM rezervari WHERE idtransport = $1 LIMIT 1',
+      [idtransport]
+    );
+
+    res.json(result.rows.length > 0);
+  } catch (err) {
+    console.error("Eroare la verificarea rezervărilor:", err);
+    res.status(500).json(false);
+  }
+});
+
+
+//sterge autocare rezervate
+app.delete('/api/sterge-rezervari-pe-autocar/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await pool.query('DELETE FROM rezervari WHERE idtransport = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Eroare la ștergerea rezervărilor:", err);
+    res.status(500).json({ success: false });
+  }
+});
+
+
+
+app.get('/api/autocare-cu-ora', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT t.idtransport, t.numar_inmatriculare,
+             l1.nume AS plecare_oras, l2.nume AS destinatie_oras
+      FROM transport t
+      JOIN ora_plecare o ON t.idtransport = o.idtransport
+      JOIN locatii l1 ON t.idplecare = l1.idlocatie
+      JOIN locatii l2 ON t.idsosire = l2.idlocatie
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Eroare la obținerea autocarelor cu oră:", err);
+    res.status(500).json({ message: "Eroare server" });
+  }
+});

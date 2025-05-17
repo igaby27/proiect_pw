@@ -12,7 +12,7 @@ export default function RezervareCursaPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    axios.get("http://localhost:5000/api/autocare-disponibile")
+    axios.get("http://localhost:5000/api/autocare-cu-ora")
       .then((res) => setCurseDisponibile(res.data))
       .catch((err) => console.error("Eroare la încărcarea autocarelor:", err));
   }, []);

@@ -1,101 +1,119 @@
 import React, { useEffect, useState } from "react";
-import { Container, Form, Button, Alert } from "react-bootstrap";
+import { Container, Button, Row, Col, Alert } from "react-bootstrap";
 
-export default function StergeCursa() {
-  const [form, setForm] = useState({ nume: "", adresa: "" });
-  const [listaCurse, setListaCurse] = useState([]);
-  const [success, setSuccess] = useState(false);
+export default function StergereLocatie() {
+  const [locatii, setLocatii] = useState([]);
+  const [folosite, setFolosite] = useState([]);
+  const [nefolosite, setNefolosite] = useState([]);
   const [error, setError] = useState("");
 
-  // Funcție reutilizabilă pentru a încărca lista de curse
-  const incarcaCurse = () => {
-    fetch("http://localhost:5000/api/locatii")
-      .then((res) => res.json())
-      .then((data) => setListaCurse(data))
-      .catch(() => setError("Nu s-au putut încărca cursele."));
-  };
-
   useEffect(() => {
-    incarcaCurse();
-  }, []);
-
-  const handleChange = (e) => {
-    const [nume, adresa] = e.target.value.split("|");
-    setForm({ nume, adresa });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    const confirm = window.confirm(
-      `Ești sigur că vrei să ștergi cursa "${form.nume} – ${form.adresa}"?`
-    );
-    if (!confirm) return;
-
-    fetch("http://localhost:5000/api/locatii/delete", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    })
+    fetch("http://localhost:5000/api/locatii-status")
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) {
-          setSuccess(true);
-          setError("");
-          incarcaCurse(); // actualizează lista
-          setForm({ nume: "", adresa: "" }); // resetează formularul
-        } else {
-          setSuccess(false);
-          setError("Cursa nu a fost găsită.");
-        }
+        if (!Array.isArray(data)) return setError("Eroare la încărcare locații.");
+
+        const folosite = [];
+        const nefolosite = [];
+
+        data.forEach((loc) => {
+          if (loc.este_folosita) folosite.push(loc);
+          else nefolosite.push(loc);
+        });
+
+        setFolosite(folosite);
+        setNefolosite(nefolosite);
       })
       .catch(() => setError("Eroare la conectarea cu serverul."));
+  }, []);
+
+  const stergeLocatie = async (idlocatie, cuRezervari = false) => {
+    if (cuRezervari) {
+      const confirm = window.confirm("Această locație este folosită. Vor fi șterse și autocarele, cursele și rezervările asociate. Continui?");
+      if (!confirm) return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/locatie/delete/${idlocatie}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (data.success) window.location.reload();
+      else setError(data.message || "Eroare la ștergere.");
+    } catch {
+      setError("Eroare server.");
+    }
   };
 
   return (
     <Container
       fluid
-      className="d-flex flex-column justify-content-center align-items-center text-white"
+      className="text-white d-flex flex-column align-items-center justify-content-center"
       style={{
         minHeight: "100vh",
         background: "linear-gradient(to bottom, #007bff, #000)",
         padding: "2rem",
       }}
     >
-      <h1 className="mb-4">Sterge locatie</h1>
-      {success && <Alert variant="success">Locatia a fost stearsa cu succes!</Alert>}
+      <h1 className="mb-4 text-center">Ștergere Locație</h1>
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <Form onSubmit={handleSubmit} style={{ maxWidth: "500px", width: "100%" }}>
-        <Form.Group className="mb-3">
-          <Form.Label>Selectează o locatie</Form.Label>
-          <Form.Select
-            onChange={handleChange}
-            value={form.nume && form.adresa ? `${form.nume}|${form.adresa}` : ""}
-            required
-          >
-            <option value="">-- alege locatia --</option>
-            {listaCurse.map((cursa, index) => (
-              <option key={index} value={`${cursa.nume}|${cursa.adresa}`}>
-                {cursa.nume} – {cursa.adresa}
-              </option>
-            ))}
-          </Form.Select>
-        </Form.Group>
-
-        <div className="d-flex justify-content-between gap-3">
-          <Button
-            variant="secondary"
-            className="w-50 py-2 fs-5"
-            onClick={() => window.history.back()}
-          >
-            Înapoi
-          </Button>
-          <Button type="submit" variant="danger" className="w-50 py-2 fs-5">
-            Șterge cursa
-          </Button>
+      <h4 className="text-center">Locații neutilizate (se pot șterge direct)</h4>
+      {nefolosite.length === 0 ? (
+        <p className="text-center mb-4">Nicio locație neutilizată.</p>
+      ) : (
+        <div style={{ width: "100%", maxWidth: "700px" }}>
+          {nefolosite.map((loc) => (
+            <Row key={loc.idlocatie} className="align-items-center mb-2 border-bottom pb-2">
+              <Col>
+                <span>{loc.nume} – {loc.adresa}</span>
+              </Col>
+              <Col xs="auto">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => stergeLocatie(loc.idlocatie, false)}
+                >
+                  Șterge
+                </Button>
+              </Col>
+            </Row>
+          ))}
         </div>
-      </Form>
+      )}
+
+      <h4 className="mt-5 text-center">Locații utilizate (cu atenționare)</h4>
+      {folosite.length === 0 ? (
+        <p className="text-center">Nicio locație utilizată.</p>
+      ) : (
+        <div style={{ width: "100%", maxWidth: "700px" }}>
+          {folosite.map((loc) => (
+            <Row key={loc.idlocatie} className="align-items-center mb-2 border-bottom pb-2">
+              <Col>
+                <span>{loc.nume} – {loc.adresa}</span>
+              </Col>
+              <Col xs="auto">
+                <Button
+                  variant="warning"
+                  size="sm"
+                  onClick={() => stergeLocatie(loc.idlocatie, true)}
+                >
+                  Șterge cu rezervări
+                </Button>
+              </Col>
+            </Row>
+          ))}
+        </div>
+      )}
+
+      <Button
+        variant="secondary"
+        className="mt-5 px-5 py-2 fs-5"
+        onClick={() => window.history.back()}
+      >
+        Înapoi
+      </Button>
     </Container>
   );
 }

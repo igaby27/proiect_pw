@@ -3,11 +3,29 @@ import { Container, Row, Col, Button } from "react-bootstrap";
 import Loader from "./Loader"; // Importăm loader-ul
 import CursaHarta from "./MockupCursa"; // asigură-te că path-ul e corect
 import "leaflet/dist/leaflet.css";
+import { useNavigate } from "react-router-dom";
+
+
 
 
 export default function HomeCompanie() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
+
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("currentUser"));
+    
+    // Nu este logat sau nu are rolul corect
+    if (!user || user.rol !== "companie") {
+      navigate("/login"); // sau "/"
+    }
+  }, []);
+
+
+
 
   useEffect(() => {
       const timer = setTimeout(() => setLoading(false), 1000); // Simulăm încărcarea

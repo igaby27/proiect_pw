@@ -3,13 +3,31 @@ import { Container, Row, Col, Button, Card } from "react-bootstrap";
 import Loader from "./Loader";
 import CursaHarta from "./MockupCursa";
 import "leaflet/dist/leaflet.css";
+import { useNavigate } from "react-router-dom";
+
 
 export default function HomeUser() {
   const [username, setUsername] = useState("");
   const [userId, setUserId] = useState(null);
   const [curse, setCurse] = useState([]);
   const [rezervari, setRezervari] = useState([]);
+  const [curseViitoare, setCurseViitoare] = useState([]);
+  const [curseTrecute, setCurseTrecute] = useState([]);
   const [loading, setLoading] = useState(true);
+
+
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("currentUser"));
+
+    if (!user || user.rol !== "user") {
+      navigate("/login"); // Sau "/"
+    }
+  }, []);
+
+
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1000);
@@ -32,8 +50,12 @@ export default function HomeUser() {
             fetch(`http://localhost:5000/api/rezervarile-mele?iduser=${data.id}`)
               .then(res => res.json())
               .then(rez => {
-                console.log("📦 Rezervări:", rez);
-                setRezervari(Array.isArray(rez) ? rez : []);
+                if (Array.isArray(rez)) {
+                  setRezervari(rez);
+                  separaRezervariDupaData(rez);
+                } else {
+                  setRezervari([]);
+                }
               })
               .catch(err => console.error("Eroare rezervări:", err));
           }
@@ -42,11 +64,35 @@ export default function HomeUser() {
     }
 
     // Obține curse disponibile
-    fetch("http://localhost:5000/api/autocare-disponibile")
+    // Obține curse disponibile (care au și oră de plecare)
+    fetch("http://localhost:5000/api/autocare-cu-ora")
       .then(res => res.json())
       .then(data => setCurse(data))
       .catch(err => console.error("Eroare curse:", err));
+
   }, []);
+
+  const separaRezervariDupaData = (lista) => {
+    const azi = new Date();
+    azi.setHours(0, 0, 0, 0); // elimină ora, minut, secunde
+
+    const viitoare = [];
+    const trecute = [];
+
+    lista.forEach((rez) => {
+      const dataRez = new Date(rez.data_rezervare);
+      dataRez.setHours(0, 0, 0, 0); // ignoră ora
+
+      if (dataRez >= azi) {
+        viitoare.push(rez);
+      } else {
+        trecute.push(rez);
+      }
+    });
+
+    setCurseViitoare(viitoare);
+    setCurseTrecute(trecute);
+  };
 
   const handleRedirect1 = () => window.location.href = "/rezerva-cursa";
   const handleRedirect2 = () => window.location.href = "/anuleaza-cursa";
@@ -89,14 +135,14 @@ export default function HomeUser() {
         </Col>
       </Row>
 
-      {/* Rezervările mele */}
+      {/* Curse viitoare */}
       <Row className="mb-4 px-3">
         <Col>
           <Card className="bg-transparent shadow" style={{ color: "white" }}>
             <Card.Body>
-              <Card.Title style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Rezervările mele</Card.Title>
-              {rezervari.length === 0 ? (
-                <p className="mt-3">Nu ai rezervări active.</p>
+              <Card.Title style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Curse viitoare</Card.Title>
+              {curseViitoare.length === 0 ? (
+                <p className="mt-3">Nu ai curse viitoare.</p>
               ) : (
                 <>
                   <Row className="fw-bold border-bottom pb-2">
@@ -107,7 +153,42 @@ export default function HomeUser() {
                     <Col>Destinație</Col>
                     <Col>Autocar</Col>
                   </Row>
-                  {rezervari.map((rez, idx) => (
+                  {curseViitoare.map((rez, idx) => (
+                    <Row key={idx} className="pt-2 align-items-center">
+                      <Col>{new Date(rez.data_rezervare).toLocaleDateString()}</Col>
+                      <Col>{rez.ora_rezervare}</Col>
+                      <Col>{rez.numar_locuri}</Col>
+                      <Col>{rez.plecare}</Col>
+                      <Col>{rez.destinatie}</Col>
+                      <Col>{rez.numar_inmatriculare}</Col>
+                    </Row>
+                  ))}
+                </>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Curse trecute */}
+      <Row className="mb-4 px-3">
+        <Col>
+          <Card className="bg-transparent shadow" style={{ color: "white" }}>
+            <Card.Body>
+              <Card.Title style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Curse trecute</Card.Title>
+              {curseTrecute.length === 0 ? (
+                <p className="mt-3">Nu ai curse trecute.</p>
+              ) : (
+                <>
+                  <Row className="fw-bold border-bottom pb-2">
+                    <Col>Data</Col>
+                    <Col>Ora</Col>
+                    <Col>Locuri</Col>
+                    <Col>Plecare</Col>
+                    <Col>Destinație</Col>
+                    <Col>Autocar</Col>
+                  </Row>
+                  {curseTrecute.map((rez, idx) => (
                     <Row key={idx} className="pt-2 align-items-center">
                       <Col>{new Date(rez.data_rezervare).toLocaleDateString()}</Col>
                       <Col>{rez.ora_rezervare}</Col>
