@@ -20,3 +20,13 @@ export const del = async (endpoint) => {
   });
   return await res.json();
 };
+
+
+export const put = async (endpoint, body) => {
+  const res = await fetch(`${API}${endpoint}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return await res.json();
+};
