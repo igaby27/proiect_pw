@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Form, Button, Card, Alert } from "react-bootstrap";
-import { get, post } from "../api/api"; // ✅ Wrapper pentru producție
+import { get, post } from "../api/api";
 
 export default function RezervareCursaPage() {
   const [curseDisponibile, setCurseDisponibile] = useState([]);
@@ -9,6 +9,7 @@ export default function RezervareCursaPage() {
   const [oraSelectata, setOraSelectata] = useState("");
   const [numarLocuri, setNumarLocuri] = useState(1);
   const [dataSelectata, setDataSelectata] = useState("");
+  const [dateDisponibile, setDateDisponibile] = useState([]);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
@@ -22,6 +23,10 @@ export default function RezervareCursaPage() {
       get(`/api/ora-plecare-transport/${rutaSelectata}`)
         .then(setCurse)
         .catch((err) => console.error("Eroare la obținerea orelor:", err));
+
+      get(`/api/date-disponibile/${rutaSelectata}`)
+        .then(setDateDisponibile)
+        .catch((err) => console.error("Eroare la obținerea datelor disponibile:", err));
     }
   }, [rutaSelectata]);
 
@@ -95,6 +100,22 @@ export default function RezervareCursaPage() {
               </Form.Group>
 
               <Form.Group className="mb-3">
+                <Form.Label>Data plecării</Form.Label>
+                <Form.Select
+                  value={dataSelectata}
+                  onChange={(e) => setDataSelectata(e.target.value)}
+                  required
+                >
+                  <option value="">Alege data</option>
+                  {dateDisponibile.map((d, idx) => (
+                    <option key={idx} value={d.data}>
+                      {new Date(d.data).toLocaleDateString("ro-RO")}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
                 <Form.Label>Ora plecare</Form.Label>
                 <Form.Select
                   value={oraSelectata}
@@ -108,16 +129,6 @@ export default function RezervareCursaPage() {
                     </option>
                   ))}
                 </Form.Select>
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Data rezervării</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={dataSelectata}
-                  onChange={(e) => setDataSelectata(e.target.value)}
-                  required
-                />
               </Form.Group>
 
               <Form.Group className="mb-3">
