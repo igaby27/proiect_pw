@@ -31,37 +31,42 @@ export default function RezervareCursaPage() {
   }, [rutaSelectata]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    const user = JSON.parse(localStorage.getItem("currentUser"));
+  e.preventDefault();
+  const user = JSON.parse(localStorage.getItem("currentUser"));
 
-    if (!user?.email) {
-      alert("Utilizatorul nu este autentificat.");
-      return;
-    }
+  if (!user?.email) {
+    alert("Utilizatorul nu este autentificat.");
+    return;
+  }
 
-    if (!dataSelectata) {
-      alert("Te rugăm să selectezi o dată pentru rezervare.");
-      return;
-    }
+  if (!dataSelectata) {
+    alert("Te rugăm să selectezi o dată pentru rezervare.");
+    return;
+  }
 
-    try {
-      await post("/api/rezerva", {
-        email: user.email,
-        idtransport: parseInt(rutaSelectata),
-        idora: parseInt(oraSelectata),
-        numar_locuri: parseInt(numarLocuri),
-        data: dataSelectata,
-      });
+  try {
+    const response = await post("/api/rezerva", {
+      email: user.email,
+      idtransport: parseInt(rutaSelectata),
+      idora: parseInt(oraSelectata),
+      numar_locuri: parseInt(numarLocuri),
+      data: dataSelectata,
+    });
 
+    if (response.success) {
       setSuccess(true);
       setTimeout(() => {
         window.location.href = "/home-user";
       }, 1000);
-    } catch (err) {
-      console.error("Eroare la rezervare:", err);
-      alert("A apărut o eroare la salvarea rezervării.");
+    } else {
+      alert(response.message || "Rezervarea nu a fost realizată.");
     }
-  };
+  } catch (err) {
+    console.error("Eroare la rezervare:", err);
+    alert("A apărut o eroare la salvarea rezervării.");
+  }
+};
+
 
   return (
     <Container
