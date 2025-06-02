@@ -278,21 +278,26 @@ app.get('/api/autocare-disponibile', async (req, res) => {
 
 
 
-//ADAUGA CURSA CU ORA DE PLECARE
+//ADAUGA CURSA CU ORA DE PLECARE si data
 
-app.post('/api/adauga-cursa', async (req, res) => {
-  const { autocarId, oraPlecare } = req.body;
+
+app.post("/api/adauga-cursa", async (req, res) => {
+  const { autocarId, oraPlecare, dataPlecare } = req.body;
+
+  if (!autocarId || !oraPlecare || !dataPlecare) {
+    return res.status(400).json({ success: false, message: "Date lipsă" });
+  }
 
   try {
-    await pool.query(
-      `INSERT INTO ora_plecare (idtransport, ora) VALUES ($1, $2)`,
-      [autocarId, oraPlecare]
+    const result = await pool.query(
+      "INSERT INTO ora_plecare (idtransport, ora, data) VALUES ($1, $2, $3) RETURNING *",
+      [autocarId, oraPlecare, dataPlecare]
     );
 
-    res.json({ success: true });
+    res.json({ success: true, cursa: result.rows[0] });
   } catch (err) {
-    console.error("Eroare la adăugarea orei de plecare:", err);
-    res.status(500).json({ success: false });
+    console.error("Eroare la inserare cursă:", err);
+    res.status(500).json({ success: false, message: "Eroare server" });
   }
 });
 
@@ -322,58 +327,54 @@ app.delete('/api/autocar/:id', async (req, res) => {
 
 //cauta cursele de sters
 
-app.get('/api/curse-de-sters', async (req, res) => {
+app.get("/api/curse-de-sters", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT 
-        o.idora,
-        t.idtransport,
-        t.numar_inmatriculare,
-        l1.nume AS plecare,
-        l2.nume AS sosire,
-        o.ora
-      FROM transport t
-      JOIN ora_plecare o ON t.idtransport = o.idtransport
-      JOIN locatii l1 ON t.idplecare = l1.idlocatie
-      JOIN locatii l2 ON t.idsosire = l2.idlocatie
+      SELECT o.idora, t.numar_inmatriculare, l1.nume AS plecare, l2.nume AS sosire, o.ora, o.data
+      FROM ora_plecare o
+      JOIN transport t ON o.idtransport = t.idtransport
+      JOIN locatii l1 ON t.plecare = l1.idlocatie
+      JOIN locatii l2 ON t.sosire = l2.idlocatie
+      ORDER BY o.data, o.ora;
     `);
     res.json(result.rows);
   } catch (err) {
-    console.error("Eroare la obținerea curselor:", err);
-    res.status(500).json({ message: "Eroare server" });
+    console.error("Eroare la curse-de-sters:", err);
+    res.status(500).json({ success: false });
   }
 });
 
 
 
 
-
-//sterge cursa din ora_plecare
-
-app.delete('/api/sterge-cursa/:idora', async (req, res) => {
+app.delete("/api/sterge-cursa/:idora", async (req, res) => {
   const { idora } = req.params;
 
   try {
-    // 1. Aflăm ora și transportul asociate cursei
-    const detalii = await pool.query(
-      `SELECT ora, idtransport FROM ora_plecare WHERE idora = $1`,
+    // Verificăm dacă există rezervări pentru această cursă
+    const check = await pool.query(
+      `SELECT 1 FROM rezervari WHERE idora = $1 LIMIT 1`,
       [idora]
     );
 
-    if (detalii.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Cursa nu a fost găsită." });
+    if (check.rowCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Cursa are rezervări active și nu poate fi ștearsă.",
+      });
     }
 
-    const { ora, idtransport } = detalii.rows[0];
-
-    // 2. Ștergem rezervările care aveau acea oră și acel transport
-    await pool.query(
-      `DELETE FROM rezervari WHERE idtransport = $1 AND ora_rezervare = $2`,
-      [idtransport, ora]
+    const result = await pool.query(
+      `DELETE FROM ora_plecare WHERE idora = $1`,
+      [idora]
     );
 
-    // 3. Ștergem ora de plecare
-    await pool.query(`DELETE FROM ora_plecare WHERE idora = $1`, [idora]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Cursa nu a fost găsită.",
+      });
+    }
 
     res.json({ success: true });
   } catch (err) {
@@ -381,6 +382,7 @@ app.delete('/api/sterge-cursa/:idora', async (req, res) => {
     res.status(500).json({ success: false, message: "Eroare server." });
   }
 });
+
 
 
 
@@ -463,44 +465,53 @@ app.get('/api/ora-plecare-transport/:idtransport', async (req, res) => {
 
 
 //api pentru rezervare a cursei din RezervaCursa.js
+app.post("/api/rezerva", async (req, res) => {
+  const { email, idtransport, idora, numar_locuri } = req.body;
 
-app.post('/api/rezerva', async (req, res) => {
-  const { email, idtransport, idora, numar_locuri, data } = req.body;
+  if (!email || !idtransport || !idora || !numar_locuri) {
+    return res.status(400).json({ success: false, message: "Date lipsă." });
+  }
 
   try {
-    const userRes = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-    if (userRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Utilizatorul nu a fost găsit" });
+    // Caută ID user
+    const userResult = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Utilizatorul nu există." });
     }
 
-    const iduser = userRes.rows[0].id;
+    const iduser = userResult.rows[0].id;
 
-    const oraRes = await pool.query('SELECT ora FROM ora_plecare WHERE idora = $1', [idora]);
-    const ora_rezervare = oraRes.rows[0]?.ora || null;
+    // Ia data și ora din ora_plecare
+    const oraData = await pool.query(
+      "SELECT ora, data FROM ora_plecare WHERE idora = $1 AND idtransport = $2",
+      [idora, idtransport]
+    );
 
-    const transportRes = await pool.query('SELECT numar_locuri FROM transport WHERE idtransport = $1', [idtransport]);
-    const locuriDisponibile = transportRes.rows[0]?.numar_locuri || 0;
-
-    if (numar_locuri > locuriDisponibile) {
-      return res.status(400).json({ success: false, message: `Nu sunt suficiente locuri disponibile. Mai sunt ${locuriDisponibile}.` });
+    if (oraData.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Cursa nu există." });
     }
 
-    await pool.query(`
-      INSERT INTO rezervari (iduser, idtransport, data_rezervare, numar_locuri, ora_rezervare)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [iduser, idtransport, data, numar_locuri, ora_rezervare]);
+    const { ora, data } = oraData.rows[0];
 
-    await pool.query(`
-      UPDATE transport SET numar_locuri = numar_locuri - $1 WHERE idtransport = $2
-    `, [numar_locuri, idtransport]);
+    // Verifică dacă este în viitor
+    const now = new Date();
+    const cursaDateTime = new Date(`${data}T${ora}`);
+    if (cursaDateTime < now) {
+      return res.status(400).json({ success: false, message: "Nu poți rezerva în trecut." });
+    }
+
+    // Inserează rezervarea
+    await pool.query(
+      "INSERT INTO rezervari (iduser, idtransport, data_rezervare, numar_locuri, ora_rezervare) VALUES ($1, $2, $3, $4, $5)",
+      [iduser, idtransport, data, numar_locuri, ora]
+    );
 
     res.json({ success: true });
   } catch (err) {
-    console.error("Eroare la rezervare:", err);
-    res.status(500).json({ success: false, message: "Eroare la rezervare" });
+    console.error("Eroare rezervare:", err);
+    res.status(500).json({ success: false, message: "Eroare server." });
   }
 });
-
 
 
 

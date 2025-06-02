@@ -4,6 +4,8 @@ import { get, del } from "../api/api";
 
 export default function AnuleazaCursaPage() {
   const [rezervari, setRezervari] = useState([]);
+  const [rute, setRute] = useState([]);
+  const [rutaSelectata, setRutaSelectata] = useState("");
   const [selectedId, setSelectedId] = useState("");
 
   useEffect(() => {
@@ -11,25 +13,35 @@ export default function AnuleazaCursaPage() {
 
     if (user?.username) {
       get(`/api/users/${user.username}`)
-        .then(data => {
+        .then((data) => {
           if (data?.id) {
             get(`/api/rezervarile-mele?iduser=${data.id}`)
-              .then(rez => {
-                setRezervari(Array.isArray(rez) ? rez : []);
+              .then((rez) => {
+                if (Array.isArray(rez)) {
+                  setRezervari(rez);
+
+                  // Extrage rute unice: plecare → destinație
+                  const ruteUnice = Array.from(
+                    new Set(rez.map((r) => `${r.plecare}→${r.destinatie}`))
+                  );
+                  setRute(ruteUnice);
+                }
               })
-              .catch(err => console.error("Eroare rezervări:", err));
+              .catch((err) => console.error("Eroare rezervări:", err));
           }
         })
-        .catch(err => console.error("Eroare la user:", err));
+        .catch((err) => console.error("Eroare la user:", err));
     }
   }, []);
 
+  const rezervariFiltrate = rezervari.filter(
+    (r) => `${r.plecare}→${r.destinatie}` === rutaSelectata
+  );
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
       const data = await del(`/api/sterge-rezervare/${selectedId}`);
-
       if (data.success) {
         alert("Rezervarea a fost anulată cu succes!");
         setTimeout(() => {
@@ -58,22 +70,45 @@ export default function AnuleazaCursaPage() {
         <Card.Title className="mb-4 text-center" style={{ fontSize: "2rem" }}>
           Anulează o cursă
         </Card.Title>
+
         <Form onSubmit={handleSubmit}>
           <Form.Group className="mb-3">
-            <Form.Label>Alege o rezervare</Form.Label>
+            <Form.Label>Alege rută</Form.Label>
             <Form.Select
-              value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
+              value={rutaSelectata}
+              onChange={(e) => {
+                setRutaSelectata(e.target.value);
+                setSelectedId("");
+              }}
               required
             >
-              <option value="">Selectează o rezervare</option>
-              {rezervari.map((rez) => (
-                <option key={rez.idrezervare} value={rez.idrezervare}>
-                  {rez.plecare} → {rez.destinatie} | {rez.numar_inmatriculare} | {rez.ora_rezervare} | {rez.numar_locuri} locuri
+              <option value="">Selectează rută</option>
+              {rute.map((ruta, idx) => (
+                <option key={idx} value={ruta}>
+                  {ruta}
                 </option>
               ))}
             </Form.Select>
           </Form.Group>
+
+          {rutaSelectata && (
+            <Form.Group className="mb-3">
+              <Form.Label>Alege rezervarea după dată și oră</Form.Label>
+              <Form.Select
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
+                required
+              >
+                <option value="">Selectează rezervare</option>
+                {rezervariFiltrate.map((rez) => (
+                  <option key={rez.idrezervare} value={rez.idrezervare}>
+                    {rez.data_rezervare} – {rez.ora_rezervare} | {rez.numar_inmatriculare} | {rez.numar_locuri} locuri
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+          )}
+
           <Button
             variant="danger"
             type="submit"

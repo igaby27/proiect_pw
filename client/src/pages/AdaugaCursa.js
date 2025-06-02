@@ -6,6 +6,7 @@ export default function AdaugaCursa() {
   const [autocareDisponibile, setAutocareDisponibile] = useState([]);
   const [selectedAutocar, setSelectedAutocar] = useState("");
   const [oraPlecare, setOraPlecare] = useState("");
+  const [dataPlecare, setDataPlecare] = useState("");
   const [curseExistente, setCurseExistente] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [editOra, setEditOra] = useState("");
@@ -33,12 +34,14 @@ export default function AdaugaCursa() {
       const data = await post("/api/adauga-cursa", {
         autocarId: selectedAutocar,
         oraPlecare,
+        dataPlecare,
       });
 
       if (data.success) {
         setSuccess(true);
         setSelectedAutocar("");
         setOraPlecare("");
+        setDataPlecare("");
         refreshCurse();
       } else {
         setError("Eroare la salvarea cursei.");
@@ -115,6 +118,16 @@ export default function AdaugaCursa() {
           </Form.Select>
         </Form.Group>
 
+        <Form.Group className="mb-3 text-start">
+          <Form.Label>Data plecării</Form.Label>
+          <Form.Control
+            type="date"
+            value={dataPlecare}
+            onChange={(e) => setDataPlecare(e.target.value)}
+            required
+          />
+        </Form.Group>
+
         <Form.Group className="mb-4 text-start">
           <Form.Label>Ora plecării</Form.Label>
           <Form.Control
@@ -126,11 +139,7 @@ export default function AdaugaCursa() {
         </Form.Group>
 
         <div className="d-flex justify-content-between gap-3">
-          <Button
-            variant="secondary"
-            className="w-50 py-2 fs-5"
-            onClick={() => window.history.back()}
-          >
+          <Button variant="secondary" className="w-50 py-2 fs-5" onClick={() => window.history.back()}>
             Înapoi
           </Button>
           <Button type="submit" variant="success" className="w-50 py-2 fs-5">
@@ -156,18 +165,10 @@ export default function AdaugaCursa() {
                     className="mb-2"
                   />
                   <div className="d-flex justify-content-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="success"
-                      onClick={() => handleEditSave(cursa.idora)}
-                    >
+                    <Button size="sm" variant="success" onClick={() => handleEditSave(cursa.idora)}>
                       Salvează
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setEditIndex(null)}
-                    >
+                    <Button size="sm" variant="secondary" onClick={() => setEditIndex(null)}>
                       Anulează
                     </Button>
                   </div>
@@ -177,15 +178,11 @@ export default function AdaugaCursa() {
                   <p className="mb-1 fw-bold">
                     {cursa.numar_inmatriculare} | {cursa.plecare} ➔ {cursa.sosire}
                   </p>
-                  <p>Ora plecare: {cursa.ora}</p>
-                  <Button
-                    size="sm"
-                    variant="warning"
-                    onClick={() => {
-                      setEditIndex(index);
-                      setEditOra(cursa.ora);
-                    }}
-                  >
+                  <p>Data: {cursa.data} | Ora: {cursa.ora}</p>
+                  <Button size="sm" variant="warning" onClick={() => {
+                    setEditIndex(index);
+                    setEditOra(cursa.ora);
+                  }}>
                     Modifică
                   </Button>
                 </>

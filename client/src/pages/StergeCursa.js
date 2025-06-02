@@ -1,28 +1,54 @@
 import React, { useEffect, useState } from "react";
 import { Container, Form, Button, Alert } from "react-bootstrap";
-import { get, del } from "../api/api"; // ✅ Import corect pentru backend
+import { get, del } from "../api/api";
 
 export default function StergeCursa() {
   const [curse, setCurse] = useState([]);
+  const [ruteUnice, setRuteUnice] = useState([]);
+  const [rutaSelectata, setRutaSelectata] = useState("");
+  const [candidati, setCandidati] = useState([]);
   const [selectedIdora, setSelectedIdora] = useState("");
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  const incarcaCurse = () => {
+  useEffect(() => {
     get("/api/curse-de-sters")
-      .then((data) => setCurse(Array.isArray(data) ? data : []))
+      .then((data) => {
+        if (!Array.isArray(data)) {
+          setError("Date curse invalide.");
+          return;
+        }
+
+        setCurse(data);
+
+        const rute = Array.from(
+          new Set(data.map((c) => `${c.plecare}→${c.sosire}`))
+        );
+        setRuteUnice(rute);
+      })
       .catch(() => setError("Nu s-au putut încărca cursele."));
-  };
+  }, []);
 
   useEffect(() => {
-    incarcaCurse();
-  }, []);
+    if (!rutaSelectata) {
+      setCandidati([]);
+      return;
+    }
+
+    const [plecare, sosire] = rutaSelectata.split("→");
+    const filtrate = curse.filter(
+      (c) => c.plecare === plecare && c.sosire === sosire
+    );
+
+    setCandidati(filtrate);
+    setSelectedIdora("");
+  }, [rutaSelectata, curse]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!selectedIdora) {
-      setError("Selectează o cursă.");
+      setError("Selectează o dată/oră pentru cursa de șters.");
       return;
     }
 
@@ -31,11 +57,17 @@ export default function StergeCursa() {
       if (data.success) {
         setSuccess(true);
         setError("");
-        incarcaCurse();
+        setRutaSelectata("");
         setSelectedIdora("");
+        setCandidati([]);
+        // Reîncarcă lista
+        const reloaded = await get("/api/curse-de-sters");
+        setCurse(reloaded);
+        const rute = Array.from(new Set(reloaded.map((c) => `${c.plecare}→${c.sosire}`)));
+        setRuteUnice(rute);
       } else {
         setSuccess(false);
-        setError(data.message || "Cursa nu a fost ștearsă.");
+        setError(data.message || "Cursa nu a putut fi ștearsă.");
       }
     } catch {
       setError("Eroare la conectarea cu serverul.");
@@ -58,22 +90,40 @@ export default function StergeCursa() {
 
       <Form onSubmit={handleSubmit} style={{ maxWidth: "500px", width: "100%" }}>
         <Form.Group className="mb-3">
-          <Form.Label>Selectează o cursă</Form.Label>
+          <Form.Label>Rută</Form.Label>
           <Form.Select
-            value={selectedIdora}
-            onChange={(e) => setSelectedIdora(e.target.value)}
+            value={rutaSelectata}
+            onChange={(e) => setRutaSelectata(e.target.value)}
             required
           >
-            <option value="">-- alege cursa --</option>
-            {curse.map((c) => (
-              <option key={c.idora} value={c.idora}>
-                {c.plecare} – {c.sosire} ({c.ora})
+            <option value="">-- alege rută --</option>
+            {ruteUnice.map((ruta, idx) => (
+              <option key={idx} value={ruta}>
+                {ruta}
               </option>
             ))}
           </Form.Select>
         </Form.Group>
 
-        <div className="d-flex justify-content-between gap-3">
+        {candidati.length > 0 && (
+          <Form.Group className="mb-3">
+            <Form.Label>Dată + oră plecare</Form.Label>
+            <Form.Select
+              value={selectedIdora}
+              onChange={(e) => setSelectedIdora(e.target.value)}
+              required
+            >
+              <option value="">-- alege dată + oră --</option>
+              {candidati.map((c) => (
+                <option key={c.idora} value={c.idora}>
+                  {c.data} – {c.ora} ({c.numar_inmatriculare})
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        )}
+
+        <div className="d-flex justify-content-between gap-3 mt-3">
           <Button
             variant="secondary"
             className="w-50 py-2 fs-5"
@@ -81,7 +131,7 @@ export default function StergeCursa() {
           >
             Înapoi
           </Button>
-          <Button type="submit" variant="danger" className="w-50 py-2 fs-5">
+          <Button type="submit" variant="danger" className="w-50 py-2 fs-5" disabled={!selectedIdora}>
             Șterge cursa
           </Button>
         </div>
