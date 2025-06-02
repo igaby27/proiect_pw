@@ -188,26 +188,36 @@ app.delete("/api/locatie/delete/:idlocatie", async (req, res) => {
     const idsTransport = autocare.rows.map((r) => r.idtransport);
 
     if (idsTransport.length > 0) {
-      // 2. Șterge rezervările asociate transporturilor
-      await client.query(
-        `DELETE FROM rezervari WHERE idtransport = ANY($1::int[])`,
+      // 2. Găsește toate idora asociate acestor transporturi
+      const oraRows = await client.query(
+        `SELECT idora FROM ora_plecare WHERE idtransport = ANY($1::int[])`,
         [idsTransport]
       );
 
-      // 3. Șterge cursele asociate
+      const idsOra = oraRows.rows.map((r) => r.idora);
+
+      // 3. Șterge rezervările asociate acelor idora
+      if (idsOra.length > 0) {
+        await client.query(
+          `DELETE FROM rezervari WHERE idora = ANY($1::int[])`,
+          [idsOra]
+        );
+      }
+
+      // 4. Șterge cursele (ora_plecare)
       await client.query(
         `DELETE FROM ora_plecare WHERE idtransport = ANY($1::int[])`,
         [idsTransport]
       );
 
-      // 4. Șterge autocarele (transporturile)
+      // 5. Șterge transporturile
       await client.query(
         `DELETE FROM transport WHERE idtransport = ANY($1::int[])`,
         [idsTransport]
       );
     }
 
-    // 5. Șterge locația propriu-zisă
+    // 6. Șterge locația propriu-zisă
     await client.query(`DELETE FROM locatii WHERE idlocatie = $1`, [idlocatie]);
 
     await client.query("COMMIT");
@@ -471,44 +481,57 @@ app.get('/api/ora-plecare-transport/:idtransport', async (req, res) => {
 
 //api pentru rezervare a cursei din RezervaCursa.js
 app.post("/api/rezerva", async (req, res) => {
-  const { email, idtransport, idora, numar_locuri, data } = req.body;
+  const { email, idora, numar_locuri } = req.body;
 
   try {
+    // 1. Găsește utilizatorul după email
     const userResult = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
-    if (userResult.rowCount === 0) return res.status(404).json({ success: false, message: "Utilizator inexistent." });
-
-    const userId = userResult.rows[0].id;
-
-    // 1. Verificare locuri disponibile
-    const locuriRes = await pool.query("SELECT numar_locuri FROM transport WHERE idtransport = $1", [idtransport]);
-    const locuriDisponibile = locuriRes.rows[0]?.numar_locuri || 0;
-
-    if (locuriDisponibile < numar_locuri) {
-      return res.status(400).json({ success: false, message: "Nu sunt suficiente locuri disponibile." });
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ success: false, message: "Utilizator inexistent." });
     }
 
-    // 2. Reducem locurile din transport
-    await pool.query(
-      "UPDATE transport SET numar_locuri = numar_locuri - $1 WHERE idtransport = $2",
-      [numar_locuri, idtransport]
-    );
+    const iduser = userResult.rows[0].id;
 
-    // 3. Obținem ora reală
-    const oraRes = await pool.query("SELECT ora FROM ora_plecare WHERE idora = $1", [idora]);
-    const ora = oraRes.rows[0]?.ora || null;
+    // 2. Ia detalii despre cursă (inclusiv număr locuri disponibile)
+    const oraResult = await pool.query(`
+      SELECT o.idtransport, t.numar_locuri
+      FROM ora_plecare o
+      JOIN transport t ON o.idtransport = t.idtransport
+      WHERE o.idora = $1
+    `, [idora]);
 
-    // 4. Inserare rezervare
+    if (oraResult.rows.length === 0) {
+      return res.status(400).json({ success: false, message: "Cursa inexistentă." });
+    }
+
+    const { idtransport, numar_locuri: locuriDisponibile } = oraResult.rows[0];
+
+    // 3. Verifică dacă sunt suficiente locuri
+    if (numar_locuri > locuriDisponibile) {
+      return res.status(400).json({ success: false, message: "Număr insuficient de locuri disponibile." });
+    }
+
+    // 4. Scade locurile din transport
     await pool.query(`
-      INSERT INTO rezervari (iduser, idtransport, idora, data_rezervare, ora_rezervare, numar_locuri)
-      VALUES ($1, $2, $3, $4, $5, $6)
-    `, [userId, idtransport, idora, data, ora, numar_locuri]);
+      UPDATE transport
+      SET numar_locuri = numar_locuri - $1
+      WHERE idtransport = $2
+    `, [numar_locuri, idtransport]);
+
+    // 5. Salvează rezervarea (doar cu idora, nu cu idtransport)
+    await pool.query(`
+      INSERT INTO rezervari (iduser, idora, numar_locuri)
+      VALUES ($1, $2, $3)
+    `, [iduser, idora, numar_locuri]);
 
     res.json({ success: true });
   } catch (err) {
     console.error("Eroare la rezervare:", err);
-    res.status(500).json({ success: false, message: "Eroare internă" });
+    res.status(500).json({ success: false, message: "Eroare server." });
   }
 });
+
+
 
 
 
@@ -523,14 +546,18 @@ app.get('/api/rezervarile-mele', async (req, res) => {
 
   try {
     const rezervariResult = await pool.query(`
-      SELECT r.idrezervare, r.numar_locuri, r.ora_rezervare, r.data_rezervare,
-             l1.nume AS plecare, l2.nume AS destinatie, t.numar_inmatriculare
-      FROM rezervari r
-      JOIN transport t ON r.idtransport = t.idtransport
-      JOIN locatii l1 ON t.idplecare = l1.idlocatie
-      JOIN locatii l2 ON t.idsosire = l2.idlocatie
-      WHERE r.iduser = $1
-      ORDER BY r.data_rezervare DESC
+      SELECT r.idrezervare, r.numar_locuri,
+       o.data AS data_rezervare, o.ora AS ora_rezervare,
+       l1.nume AS plecare, l2.nume AS destinatie,
+       t.numar_inmatriculare
+          FROM rezervari r
+          JOIN ora_plecare o ON r.idora = o.idora
+          JOIN transport t ON o.idtransport = t.idtransport
+          JOIN locatii l1 ON t.idplecare = l1.idlocatie
+          JOIN locatii l2 ON t.idsosire = l2.idlocatie
+          WHERE r.iduser = $1
+          ORDER BY o.data DESC
+
     `, [iduser]);
 
     res.json(rezervariResult.rows);
@@ -577,29 +604,40 @@ app.get('/api/users/:username', async (req, res) => {
 
 
 
-//sterge rezervarea
+// șterge rezervarea
 app.delete("/api/sterge-rezervare/:id", async (req, res) => {
   const idrezervare = req.params.id;
 
   try {
-    // 1. Preluăm detalii rezervare
+    // 1. Preluăm detalii rezervare (idora + număr locuri)
     const rezervareRes = await pool.query(
-      "SELECT idtransport, numar_locuri FROM rezervari WHERE idrezervare = $1",
+      "SELECT idora, numar_locuri FROM rezervari WHERE idrezervare = $1",
       [idrezervare]
     );
 
     if (rezervareRes.rowCount === 0)
       return res.status(404).json({ success: false, message: "Rezervarea nu există." });
 
-    const { idtransport, numar_locuri } = rezervareRes.rows[0];
+    const { idora, numar_locuri } = rezervareRes.rows[0];
 
-    // 2. Adăugăm înapoi locurile în transport
+    // 2. Luăm idtransport din ora_plecare
+    const oraRes = await pool.query(
+      "SELECT idtransport FROM ora_plecare WHERE idora = $1",
+      [idora]
+    );
+
+    if (oraRes.rowCount === 0)
+      return res.status(400).json({ success: false, message: "Cursa nu mai există." });
+
+    const { idtransport } = oraRes.rows[0];
+
+    // 3. Adăugăm locurile înapoi în transport
     await pool.query(
       "UPDATE transport SET numar_locuri = numar_locuri + $1 WHERE idtransport = $2",
       [numar_locuri, idtransport]
     );
 
-    // 3. Ștergem rezervarea
+    // 4. Ștergem rezervarea
     await pool.query("DELETE FROM rezervari WHERE idrezervare = $1", [idrezervare]);
 
     res.json({ success: true });
@@ -662,15 +700,18 @@ app.put('/api/cursa/update', async (req, res) => {
   }
 });
 
-//ia autocare rezervate
+// verifică dacă există rezervări pentru un autocar
 app.get('/api/rezervari-pe-autocar/:idtransport', async (req, res) => {
   const { idtransport } = req.params;
 
   try {
-    const result = await pool.query(
-      'SELECT 1 FROM rezervari WHERE idtransport = $1 LIMIT 1',
-      [idtransport]
-    );
+    const result = await pool.query(`
+      SELECT 1
+      FROM rezervari r
+      JOIN ora_plecare o ON r.idora = o.idora
+      WHERE o.idtransport = $1
+      LIMIT 1
+    `, [idtransport]);
 
     res.json(result.rows.length > 0);
   } catch (err) {
@@ -685,13 +726,20 @@ app.delete('/api/sterge-rezervari-pe-autocar/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    await pool.query('DELETE FROM rezervari WHERE idtransport = $1', [id]);
+    await pool.query(`
+      DELETE FROM rezervari
+      WHERE idora IN (
+        SELECT idora FROM ora_plecare WHERE idtransport = $1
+      )
+    `, [id]);
+
     res.json({ success: true });
   } catch (err) {
     console.error("Eroare la ștergerea rezervărilor:", err);
     res.status(500).json({ success: false });
   }
 });
+
 
 
 
