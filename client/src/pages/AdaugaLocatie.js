@@ -14,7 +14,7 @@ export default function AdaugaSiAdministreazaLocatii() {
   }, []);
 
   const fetchLocatii = () => {
-    fetch("http://localhost:5000/api/locatii/all")
+    fetch("/api/locatii/all")
       .then((res) => res.json())
       .then((data) => setLocatii(data))
       .catch(() => setError("Eroare la încărcarea locațiilor."));
@@ -27,7 +27,7 @@ export default function AdaugaSiAdministreazaLocatii() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    fetch("http://localhost:5000/api/locatii/add", {
+    fetch("/api/locatii/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
