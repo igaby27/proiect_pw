@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Container, Form, Button, Alert, Card } from "react-bootstrap";
+import { get, del } from "../api/api"; // Wrapper pentru API extern
 
 export default function AdaugaSiAdministreazaLocatii() {
   const [form, setForm] = useState({ nume: "", adresa: "" });
