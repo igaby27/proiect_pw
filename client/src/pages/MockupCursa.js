@@ -11,7 +11,7 @@ export default function CursaHartaReal() {
     const fetchCurse = async () => {
       try {
         //const data = await get("/api/curse-in-desfasurare");
-        const data = await get("/api/cursa-cu-ora");
+        const data = await get("/api/curse-cu-ora");
         setCurse(data);
       } catch (error) {
         console.error("Eroare la obținerea curselor:", error);
