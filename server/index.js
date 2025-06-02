@@ -746,3 +746,20 @@ app.get("/api/curse-cu-ora", async (req, res) => {
   }
 });
 
+
+
+//pentru a filtra dupa data
+
+app.get("/api/date-disponibile/:idtransport", async (req, res) => {
+  try {
+    const { idtransport } = req.params;
+    const result = await pool.query(
+      `SELECT DISTINCT data FROM ora_plecare WHERE idtransport = $1 ORDER BY data`,
+      [idtransport]
+    );
+    res.json(result.rows); // [{ data: '2025-06-05' }, { data: '2025-06-07' }]
+  } catch (err) {
+    console.error("Eroare la obținerea datelor disponibile:", err);
+    res.status(500).json({ message: "Eroare server." });
+  }
+});
