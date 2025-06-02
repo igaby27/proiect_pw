@@ -14,7 +14,7 @@ export default function AdaugaSiAdministreazaLocatii() {
   }, []);
 
   const fetchLocatii = () => {
-    fetch("/api/locatii/all")
+    get("/api/locatii/all")
       .then((res) => res.json())
       .then((data) => setLocatii(data))
       .catch(() => setError("Eroare la încărcarea locațiilor."));
@@ -27,7 +27,7 @@ export default function AdaugaSiAdministreazaLocatii() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    fetch("/api/locatii/add", {
+    get("/api/locatii/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -55,7 +55,7 @@ export default function AdaugaSiAdministreazaLocatii() {
   };
 
   const handleEditSave = (idlocatie) => {
-    fetch("http://localhost:5000/api/locatii/update", {
+    get("/api/locatii/update", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

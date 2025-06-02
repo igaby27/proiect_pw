@@ -15,7 +15,7 @@ export default function HomeGuest() {
   }, []);
 
   useEffect(() => {
-    get("/api/autocare-disponibile")
+    get("/api/autocare-cu-ora")
       .then(data => {
         setCurse(Array.isArray(data) ? data : []);
       })
