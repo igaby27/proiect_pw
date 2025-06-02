@@ -10,7 +10,8 @@ export default function CursaHartaReal() {
   useEffect(() => {
     const fetchCurse = async () => {
       try {
-        const data = await get("/api/curse-in-desfasurare");
+        //const data = await get("/api/curse-in-desfasurare");
+        const data = await get("/api/cursa-cu-ora");
         setCurse(data);
       } catch (error) {
         console.error("Eroare la obținerea curselor:", error);

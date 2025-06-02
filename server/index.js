@@ -702,3 +702,36 @@ app.get('/api/autocare-cu-ora', async (req, res) => {
     res.status(500).json({ message: "Eroare server" });
   }
 });
+
+
+
+app.get("/api/curse-cu-ora", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT t.idtransport, l1.nume AS orasStart, l2.nume AS orasDestinatie
+      FROM transport t
+      JOIN ora_plecare o ON t.idtransport = o.idtransport
+      JOIN locatii l1 ON t.idplecare = l1.idlocatie
+      JOIN locatii l2 ON t.idsosire = l2.idlocatie
+    `);
+
+    const curse = await Promise.all(result.rows.map(async (cursa) => {
+      const coordStart = await fetchCoordsFromNominatim(cursa.orasstart);
+      const coordDest = await fetchCoordsFromNominatim(cursa.orasdestinatie);
+
+      return {
+        id: cursa.idtransport,
+        orasStart: cursa.orasstart,
+        orasDestinatie: cursa.orasdestinatie,
+        coordStart,
+        coordDest,
+      };
+    }));
+
+    res.json(curse);
+  } catch (err) {
+    console.error("Eroare la obținerea curselor cu oră:", err);
+    res.status(500).json({ error: "Eroare server" });
+  }
+});
+
