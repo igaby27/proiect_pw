@@ -330,17 +330,22 @@ app.delete('/api/autocar/:id', async (req, res) => {
 app.get("/api/curse-de-sters", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT o.idora, t.numar_inmatriculare, l1.nume AS plecare, l2.nume AS sosire, o.ora, o.data
+      SELECT 
+        o.idora,
+        o.ora,
+        o.data,
+        t.numar_inmatriculare,
+        lp.nume AS plecare,
+        ls.nume AS sosire
       FROM ora_plecare o
-      JOIN transport t ON o.idtransport = t.idtransport
-      JOIN locatii l1 ON t.plecare = l1.idlocatie
-      JOIN locatii l2 ON t.sosire = l2.idlocatie
-      ORDER BY o.data, o.ora;
+      JOIN transport t ON t.idtransport = o.idtransport
+      JOIN locatii lp ON lp.idlocatie = t.idplecare
+      JOIN locatii ls ON ls.idlocatie = t.idsosire
     `);
     res.json(result.rows);
   } catch (err) {
     console.error("Eroare la curse-de-sters:", err);
-    res.status(500).json({ success: false });
+    res.status(500).json({ message: "Eroare la obținerea curselor." });
   }
 });
 

@@ -5,50 +5,46 @@ import { get, del } from "../api/api";
 export default function StergeCursa() {
   const [curse, setCurse] = useState([]);
   const [ruteUnice, setRuteUnice] = useState([]);
-  const [rutaSelectata, setRutaSelectata] = useState("");
-  const [candidati, setCandidati] = useState([]);
+  const [ruteSelectata, setRutaSelectata] = useState("");
+  const [dateDisponibile, setDateDisponibile] = useState([]);
   const [selectedIdora, setSelectedIdora] = useState("");
+
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     get("/api/curse-de-sters")
       .then((data) => {
-        if (!Array.isArray(data)) {
-          setError("Date curse invalide.");
-          return;
-        }
-
-        setCurse(data);
+        setCurse(Array.isArray(data) ? data : []);
 
         const rute = Array.from(
-          new Set(data.map((c) => `${c.plecare}→${c.sosire}`))
+          new Set(
+            data.map(
+              (c) => `${c.plecare} → ${c.sosire} | ${c.numar_inmatriculare}`
+            )
+          )
         );
         setRuteUnice(rute);
       })
       .catch(() => setError("Nu s-au putut încărca cursele."));
   }, []);
 
-  useEffect(() => {
-    if (!rutaSelectata) {
-      setCandidati([]);
-      return;
-    }
-
-    const [plecare, sosire] = rutaSelectata.split("→");
-    const filtrate = curse.filter(
-      (c) => c.plecare === plecare && c.sosire === sosire
-    );
-
-    setCandidati(filtrate);
+  const handleRutaChange = (val) => {
+    setRutaSelectata(val);
     setSelectedIdora("");
-  }, [rutaSelectata, curse]);
+
+    const date = curse.filter(
+      (c) =>
+        `${c.plecare} → ${c.sosire} | ${c.numar_inmatriculare}` === val
+    );
+    setDateDisponibile(date);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!selectedIdora) {
-      setError("Selectează o dată/oră pentru cursa de șters.");
+      setError("Selectează o dată pentru ruta aleasă.");
       return;
     }
 
@@ -59,15 +55,22 @@ export default function StergeCursa() {
         setError("");
         setRutaSelectata("");
         setSelectedIdora("");
-        setCandidati([]);
-        // Reîncarcă lista
-        const reloaded = await get("/api/curse-de-sters");
-        setCurse(reloaded);
-        const rute = Array.from(new Set(reloaded.map((c) => `${c.plecare}→${c.sosire}`)));
-        setRuteUnice(rute);
+        setDateDisponibile([]);
+
+        // reîncarcă
+        get("/api/curse-de-sters").then((res) => {
+          setCurse(res);
+          const rute = Array.from(
+            new Set(
+              res.map(
+                (c) => `${c.plecare} → ${c.sosire} | ${c.numar_inmatriculare}`
+              )
+            )
+          );
+          setRuteUnice(rute);
+        });
       } else {
-        setSuccess(false);
-        setError(data.message || "Cursa nu a putut fi ștearsă.");
+        setError(data.message || "Cursa nu a fost ștearsă.");
       }
     } catch {
       setError("Eroare la conectarea cu serverul.");
@@ -84,54 +87,54 @@ export default function StergeCursa() {
         padding: "2rem",
       }}
     >
-      <h1 className="mb-4">Șterge Cursă</h1>
-      {success && <Alert variant="success">Cursa a fost ștearsă cu succes!</Alert>}
+      <h1 className="mb-4">Șterge o Cursă</h1>
+      {success && <Alert variant="success">Cursa a fost ștearsă!</Alert>}
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <Form onSubmit={handleSubmit} style={{ maxWidth: "500px", width: "100%" }}>
+      <Form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: "500px" }}>
         <Form.Group className="mb-3">
           <Form.Label>Rută</Form.Label>
           <Form.Select
-            value={rutaSelectata}
-            onChange={(e) => setRutaSelectata(e.target.value)}
+            value={ruteSelectata}
+            onChange={(e) => handleRutaChange(e.target.value)}
             required
           >
             <option value="">-- alege rută --</option>
-            {ruteUnice.map((ruta, idx) => (
-              <option key={idx} value={ruta}>
-                {ruta}
+            {ruteUnice.map((r, i) => (
+              <option key={i} value={r}>
+                {r}
               </option>
             ))}
           </Form.Select>
         </Form.Group>
 
-        {candidati.length > 0 && (
+        {dateDisponibile.length > 0 && (
           <Form.Group className="mb-3">
-            <Form.Label>Dată + oră plecare</Form.Label>
+            <Form.Label>Dată plecare (pt ruta aleasă)</Form.Label>
             <Form.Select
               value={selectedIdora}
               onChange={(e) => setSelectedIdora(e.target.value)}
               required
             >
-              <option value="">-- alege dată + oră --</option>
-              {candidati.map((c) => (
-                <option key={c.idora} value={c.idora}>
-                  {c.data} – {c.ora} ({c.numar_inmatriculare})
+              <option value="">-- selectează dată --</option>
+              {dateDisponibile.map((d) => (
+                <option key={d.idora} value={d.idora}>
+                  {d.data} | {d.ora}
                 </option>
               ))}
             </Form.Select>
           </Form.Group>
         )}
 
-        <div className="d-flex justify-content-between gap-3 mt-3">
+        <div className="d-flex justify-content-between gap-3">
           <Button
             variant="secondary"
-            className="w-50 py-2 fs-5"
+            className="w-50 py-2"
             onClick={() => window.history.back()}
           >
             Înapoi
           </Button>
-          <Button type="submit" variant="danger" className="w-50 py-2 fs-5" disabled={!selectedIdora}>
+          <Button type="submit" variant="danger" className="w-50 py-2">
             Șterge cursa
           </Button>
         </div>
