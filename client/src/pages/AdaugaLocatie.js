@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Container, Form, Button, Alert, Card } from "react-bootstrap";
-import { get, del } from "../api/api"; // Wrapper pentru API extern
+import { get, post, put } from "../api/api"; // ✅ folosim corect metodele
 
 export default function AdaugaSiAdministreazaLocatii() {
   const [form, setForm] = useState({ nume: "", adresa: "" });
@@ -16,7 +16,6 @@ export default function AdaugaSiAdministreazaLocatii() {
 
   const fetchLocatii = () => {
     get("/api/locatii/all")
-      .then((res) => res.json())
       .then((data) => setLocatii(data))
       .catch(() => setError("Eroare la încărcarea locațiilor."));
   };
@@ -28,12 +27,7 @@ export default function AdaugaSiAdministreazaLocatii() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    get("/api/locatii/add", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    })
-      .then((res) => res.json())
+    post("/api/locatii/add", form)
       .then((data) => {
         if (data.success) {
           setSuccess(true);
@@ -56,16 +50,11 @@ export default function AdaugaSiAdministreazaLocatii() {
   };
 
   const handleEditSave = (idlocatie) => {
-    get("/api/locatii/update", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        idlocatie,
-        nume: editForm.nume,
-        adresa: editForm.adresa,
-      }),
+    put("/api/locatii/update", {
+      idlocatie,
+      nume: editForm.nume,
+      adresa: editForm.adresa,
     })
-      .then((res) => res.json())
       .then((data) => {
         if (data.success) {
           setSuccess(true);
@@ -91,12 +80,24 @@ export default function AdaugaSiAdministreazaLocatii() {
     >
       <h1 className="mb-4">Administrează Locații</h1>
 
-      {success && <Alert variant="success" className="w-100 text-center" style={{ maxWidth: "600px" }}>
-        Operațiune efectuată cu succes!
-      </Alert>}
-      {error && <Alert variant="danger" className="w-100 text-center" style={{ maxWidth: "600px" }}>
-        {error}
-      </Alert>}
+      {success && (
+        <Alert
+          variant="success"
+          className="w-100 text-center"
+          style={{ maxWidth: "600px" }}
+        >
+          Operațiune efectuată cu succes!
+        </Alert>
+      )}
+      {error && (
+        <Alert
+          variant="danger"
+          className="w-100 text-center"
+          style={{ maxWidth: "600px" }}
+        >
+          {error}
+        </Alert>
+      )}
 
       {/* Formular adăugare */}
       <Form style={{ maxWidth: "600px", width: "100%" }} onSubmit={handleSubmit}>
@@ -128,7 +129,10 @@ export default function AdaugaSiAdministreazaLocatii() {
       </Form>
 
       {/* Lista locațiilor pentru modificare */}
-      <Card className="mt-5 p-4 bg-transparent shadow text-center" style={{ color: "white", width: "100%", maxWidth: "800px" }}>
+      <Card
+        className="mt-5 p-4 bg-transparent shadow text-center"
+        style={{ color: "white", width: "100%", maxWidth: "800px" }}
+      >
         <h4 className="mb-4">Locații existente</h4>
         {locatii.length === 0 ? (
           <p>Nu există locații înregistrate.</p>
@@ -142,7 +146,9 @@ export default function AdaugaSiAdministreazaLocatii() {
                     <Form.Control
                       type="text"
                       value={editForm.nume}
-                      onChange={(e) => setEditForm({ ...editForm, nume: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, nume: e.target.value })
+                      }
                     />
                   </Form.Group>
 
@@ -151,24 +157,40 @@ export default function AdaugaSiAdministreazaLocatii() {
                     <Form.Control
                       type="text"
                       value={editForm.adresa}
-                      onChange={(e) => setEditForm({ ...editForm, adresa: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, adresa: e.target.value })
+                      }
                     />
                   </Form.Group>
 
                   <div className="d-flex gap-2 justify-content-center mt-2">
-                    <Button variant="success" size="sm" onClick={() => handleEditSave(loc.idlocatie)}>
+                    <Button
+                      variant="success"
+                      size="sm"
+                      onClick={() => handleEditSave(loc.idlocatie)}
+                    >
                       Salvează
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={() => setEditIndex(null)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setEditIndex(null)}
+                    >
                       Anulează
                     </Button>
                   </div>
                 </>
               ) : (
                 <>
-                  <p className="mb-1"><strong>{loc.nume}</strong></p>
+                  <p className="mb-1">
+                    <strong>{loc.nume}</strong>
+                  </p>
                   <p className="mb-1">{loc.adresa}</p>
-                  <Button variant="warning" size="sm" onClick={() => handleEdit(index)}>
+                  <Button
+                    variant="warning"
+                    size="sm"
+                    onClick={() => handleEdit(index)}
+                  >
                     Modifică
                   </Button>
                 </>
