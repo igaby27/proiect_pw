@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Container, Form, Button, Alert, Card } from "react-bootstrap";
-import { get, post, put } from "../api/api"; // ✅ folosim corect metodele
+import { get, post, put } from "../api/api";
 
 export default function AdaugaSiAdministreazaLocatii() {
   const [form, setForm] = useState({ nume: "", adresa: "" });
@@ -99,7 +99,6 @@ export default function AdaugaSiAdministreazaLocatii() {
         </Alert>
       )}
 
-      {/* Formular adăugare */}
       <Form style={{ maxWidth: "600px", width: "100%" }} onSubmit={handleSubmit}>
         <Form.Group className="mb-3 text-start">
           <Form.Label>Nume locație</Form.Label>
@@ -126,9 +125,17 @@ export default function AdaugaSiAdministreazaLocatii() {
         <Button variant="success" type="submit" className="w-100 py-2 fs-5">
           Adaugă locația
         </Button>
+
+        {/* Buton Înapoi */}
+        <Button
+          variant="secondary"
+          className="w-100 py-2 mt-3 fs-5"
+          onClick={() => window.history.back()}
+        >
+          Înapoi
+        </Button>
       </Form>
 
-      {/* Lista locațiilor pentru modificare */}
       <Card
         className="mt-5 p-4 bg-transparent shadow text-center"
         style={{ color: "white", width: "100%", maxWidth: "800px" }}
